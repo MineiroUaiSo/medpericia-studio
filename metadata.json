@@ -1,0 +1,6 @@
+{
+  "name": "MedPerícia Studio - Laudo & Assistência Técnica",
+  "description": "Suíte médico-legal e empresarial baseada no acervo IFHFLIX: laudos periciais judiciais, pareceres de assistência técnica, calculadora de honorários (CPC 465), banco de quesitos estratégicos, nexo por Simonin e SUSEP.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
