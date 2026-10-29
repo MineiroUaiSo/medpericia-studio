@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import {
   FileCheck,
   Upload,
@@ -19,29 +21,7 @@ import {
   type ExtractedDocument,
 } from '../utils/documentExtractor';
 
-export function ViabilidadeAnalyzer() {
-  const [caseType, setCaseType] = useState<string>('securitario');
-  const [profissao, setProfissao] = useState<string>('Mecânico de veículos automotores');
-  const [dataSinistro, setDataSinistro] = useState<string>('10/01/2026');
-  const [relatoFatos, setRelatoFatos] = useState<string>(
-    'Periciando sofreu colisão automobilística em 10/01/2026, com choque direto do cotovelo direito no painel do carro. No PS, radiografia evidenciou fratura de olécrano. Foi submetido a cirurgia de fixação com placa e parafusos em 14/01/2026. Evoluiu com calo ósseo exuberante e rigidez articular, perdendo metade da amplitude de movimento de flexoextensão. Prontuários antigos do plano de saúde não registram queixas anteriores no membro.'
-  );
-
-  const [documentChecklist, setDocumentChecklist] = useState({
-    prontuarioUrgencia: true,
-    laudoImagem: true,
-    relatorioCirurgico: true,
-    boletimOcorrencia: true,
-    laudoINSS: false,
-    carteiraTrabalho: true,
-  });
-
-  const [uploadedFiles, setUploadedFiles] = useState<ExtractedDocument[]>([]);
-
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [viabilityScore, setViabilityScore] = useState<number>(85);
-  const [viabilityStatus, setViabilityStatus] = useState<'alta' | 'media' | 'baixa'>('alta');
-  const [notaTecnicaResult, setNotaTecnicaResult] = useState<string>(`NOTA TÉCNICA DE VIABILIDADE MÉDICO-PERICIAL
+const NOTA_EXEMPLO = `NOTA TÉCNICA DE VIABILIDADE MÉDICO-PERICIAL
 
 1. OBJETO DA ANÁLISE: Avaliação de viabilidade de ação securitária/indenizatória decorrente de acidente de trânsito em 10/01/2026.
 2. PERICIANDO: João da Silva, 45 anos, Mecânico de veículos.
@@ -53,7 +33,66 @@ export function ViabilidadeAnalyzer() {
 6. ESTIMATIVA DO DANO (TABELA SUSEP): "Anquilose total de cotovelo" (teto 25%) em grau médio (50%) = 12,50% de invalidez permanente parcial incompleta.
 7. REPERCUSSÃO LABORAL: Redução da capacidade para tarefas de mecânico que demandem flexão extrema e torque vigoroso.
 8. VEREDITO DE VIABILIDADE: VIÁVEL (ALTA PROBABILIDADE DE ÊXITO TÉCNICO - 85%).
-RECOMENDAÇÃO AO ADVOGADO: O caso está pronto para ajuizamento seguro. Juntar aos autos o exame de imagem inicial, a ficha de internação cirúrgica e solicitar ao médico assistente atestado atualizado com a medição dos arcos articulares.`);
+RECOMENDAÇÃO AO ADVOGADO: O caso está pronto para ajuizamento seguro. Juntar aos autos o exame de imagem inicial, a ficha de internação cirúrgica e solicitar ao médico assistente atestado atualizado com a medição dos arcos articulares.`;
+
+const EXEMPLO_JOAO = {
+  profissao: 'Mecânico de veículos automotores',
+  dataSinistro: '10/01/2026',
+  relatoFatos: 'Periciando sofreu colisão automobilística em 10/01/2026, com choque direto do cotovelo direito no painel do carro. No PS, radiografia evidenciou fratura de olécrano. Foi submetido a cirurgia de fixação com placa e parafusos em 14/01/2026. Evoluiu com calo ósseo exuberante e rigidez articular, perdendo metade da amplitude de movimento de flexoextensão. Prontuários antigos do plano de saúde não registram queixas anteriores no membro.',
+  documentChecklist: {
+    prontuarioUrgencia: true,
+    laudoImagem: true,
+    relatorioCirurgico: true,
+    boletimOcorrencia: true,
+    laudoINSS: false,
+    carteiraTrabalho: true,
+  },
+};
+
+const CHECKLIST_VAZIO = {
+  prontuarioUrgencia: false,
+  laudoImagem: false,
+  relatorioCirurgico: false,
+  boletimOcorrencia: false,
+  laudoINSS: false,
+  carteiraTrabalho: false,
+};
+
+const TAG_EXEMPLO =
+  'inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300';
+
+export function ViabilidadeAnalyzer() {
+  const caseId = useCaseId();
+  const isTest = caseId === TEST_CASE_ID;
+  const k = (campo: string) => caseKey(caseId, `viab-${campo}`);
+
+  const [caseType, setCaseType] = usePersistedState<string>(k('caseType'), 'securitario');
+  const [profissao, setProfissao] = usePersistedState<string>(k('profissao'), '');
+  const [dataSinistro, setDataSinistro] = usePersistedState<string>(k('dataSinistro'), '');
+  const [relatoFatos, setRelatoFatos] = usePersistedState<string>(k('relatoFatos'), '');
+  const [documentChecklist, setDocumentChecklist] = usePersistedState(k('checklist'), CHECKLIST_VAZIO);
+
+  const [uploadedFiles, setUploadedFiles] = useState<ExtractedDocument[]>([]);
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [viabilityScore, setViabilityScore] = usePersistedState<number | null>(k('score'), isTest ? 85 : null);
+  const [viabilityStatus, setViabilityStatus] = usePersistedState<'alta' | 'media' | 'baixa' | null>(
+    k('status'),
+    isTest ? 'alta' : null,
+  );
+  const [notaTecnicaResult, setNotaTecnicaResult] = usePersistedState<string>(
+    k('nota'),
+    isTest ? NOTA_EXEMPLO : '',
+  );
+  const [analisado, setAnalisado] = usePersistedState<boolean>(k('analisado'), false);
+  const isExample = isTest && !analisado && notaTecnicaResult === NOTA_EXEMPLO;
+
+  const carregarExemplo = () => {
+    setProfissao(EXEMPLO_JOAO.profissao);
+    setDataSinistro(EXEMPLO_JOAO.dataSinistro);
+    setRelatoFatos(EXEMPLO_JOAO.relatoFatos);
+    setDocumentChecklist(EXEMPLO_JOAO.documentChecklist);
+  };
 
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -117,6 +156,7 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
     try {
       const response = await callAI(prompt, SYSTEM_PROMPTS.analiseViabilidade, false);
       setNotaTecnicaResult(response);
+      setAnalisado(true);
 
       // Calcula score estimado com base na presença documental
       let score = 50;
@@ -155,7 +195,8 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
             </p>
           </div>
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 min-w-[220px] text-right">
-            <span className="text-xs uppercase text-slate-400 font-semibold tracking-wider">Termômetro do Caso</span>
+            <span className="text-xs uppercase text-slate-400 font-semibold tracking-wider">Termômetro documental (heurístico)</span>
+            {isExample && <span className={`${TAG_EXEMPLO} ml-2`}>EXEMPLO</span>}
             <div
               className={`text-3xl font-extrabold mt-1 ${
                 viabilityStatus === 'alta'
@@ -165,10 +206,16 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                   : 'text-rose-400'
               }`}
             >
-              {viabilityScore}% Viabilidade
+              {viabilityScore === null ? '—' : `${viabilityScore}% Viabilidade`}
             </div>
             <span className="text-xs text-slate-400">
-              {viabilityStatus === 'alta' ? 'Alta Probabilidade de Êxito' : 'Viável com Ressalvas'}
+              {viabilityStatus === 'alta'
+                ? 'Alta probabilidade de êxito'
+                : viabilityStatus === 'media'
+                ? 'Viável com ressalvas'
+                : viabilityStatus === 'baixa'
+                ? 'Baixa viabilidade documental'
+                : 'Sem análise'}
             </span>
           </div>
         </div>
@@ -185,6 +232,16 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                 1. Informações Básicas do Caso
               </h3>
             </div>
+
+            {isTest && (
+              <button
+                type="button"
+                onClick={carregarExemplo}
+                className="w-full py-2 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-xs font-semibold"
+              >
+                Carregar exemplo (João)
+              </button>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -211,7 +268,7 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                   type="text"
                   value={dataSinistro}
                   onChange={(e) => setDataSinistro(e.target.value)}
-                  placeholder="dd/mm/aaaa"
+                  placeholder="dd/mm/aaaa (em branco = deduzir)"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-100 font-mono"
                 />
               </div>
@@ -225,7 +282,7 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                 type="text"
                 value={profissao}
                 onChange={(e) => setProfissao(e.target.value)}
-                placeholder="Ex.: Mecânico automotivo, Motorista, Pedreiro..."
+                placeholder="Em branco = deduzir dos documentos"
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-100 font-sans"
               />
             </div>
@@ -238,7 +295,7 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                 rows={4}
                 value={relatoFatos}
                 onChange={(e) => setRelatoFatos(e.target.value)}
-                placeholder="Descreva o mecanismo do trauma, lesões diagnosticadas, cirurgias e limitações atuais..."
+                placeholder="Em branco = a IA usa só os documentos anexados"
                 className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed"
               />
             </div>
@@ -367,6 +424,11 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
+              {isExample && (
+                <div className={`${TAG_EXEMPLO} mb-2`}>
+                  EXEMPLO — caso fictício de teste (João da Silva). Não é resultado de análise.
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
                   Parecer Preliminar
@@ -383,34 +445,38 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all shrink-0"
+              disabled={isExample}
+              title={isExample ? 'Exemplo — rode a análise para gerar a nota' : undefined}
+              className="disabled:opacity-50 inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all shrink-0"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Nota Copiada!' : 'Copiar Nota Técnica'}
             </button>
           </div>
 
-          {/* Quick Metrics Badges */}
+          {/* Quick Metrics Badges (somente exemplo) */}
+          {isExample && (
           <div className="grid grid-cols-3 gap-3 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
               <span className="text-[11px] text-slate-400 font-semibold uppercase">Nexo Preliminar</span>
               <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                Compatível (Simonin)
+                Compatível (Simonin) (exemplo)
               </div>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
               <span className="text-[11px] text-slate-400 font-semibold uppercase">Estimativa SUSEP</span>
               <div className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                12,5% (Médio)
+                12,5% (Médio) (exemplo)
               </div>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
               <span className="text-[11px] text-slate-400 font-semibold uppercase">Recomendação</span>
               <div className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-0.5">
-                Ajuizar c/ Provas
+                Ajuizar c/ Provas (exemplo)
               </div>
             </div>
           </div>
+          )}
 
           <label htmlFor="viabilidade-output" className="sr-only">Texto da Nota Técnica de Viabilidade</label>
           <textarea
@@ -418,6 +484,7 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
             rows={17}
             readOnly
             value={notaTecnicaResult}
+            placeholder="A Nota Técnica aparecerá aqui após executar a análise."
             className="w-full text-xs sm:text-sm p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono leading-relaxed focus:outline-none"
           />
 
