@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
+import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { Eye, ShieldAlert, Check, Copy, AlertOctagon } from 'lucide-react';
 
 interface WaddellItem {
@@ -48,12 +49,13 @@ const INITIAL_WADDELL: WaddellItem[] = [
   },
 ];
 
+const EXEMPLO_JOAO_OBS = 'Durante a anamnese, o periciando retirou e colocou sua jaqueta com auxílio de ambos os membros, porém com nítida cautela ao estender o cotovelo direito. Não foram observadas incongruências com a limitação de arco de movimento relatada.';
+
 export function WaddellValidator() {
-  const isTest = useCaseId() === TEST_CASE_ID;
-  const [waddellList, setWaddellList] = useState<WaddellItem[]>(INITIAL_WADDELL);
-  const [spontaneousObs, setSpontaneousObs] = useState<string>(
-    'Durante a anamnese, o periciando retirou e colocou sua jaqueta com auxílio de ambos os membros, porém com nítida cautela ao estender o cotovelo direito. Não foram observadas incongruências com a limitação de arco de movimento relatada.'
-  );
+  const caseId = useCaseId();
+  const isTest = caseId === TEST_CASE_ID;
+  const [waddellList, setWaddellList] = usePersistedState<WaddellItem[]>(caseKey(caseId, 'waddell-itens'), INITIAL_WADDELL);
+  const [spontaneousObs, setSpontaneousObs] = usePersistedState<string>(caseKey(caseId, 'waddell-obs'), '');
   const [copied, setCopied] = useState(false);
 
   const positiveCount = waddellList.filter((w) => w.positive).length;
@@ -76,7 +78,7 @@ export function WaddellValidator() {
         ? 'Indica componente comportamental ou não-orgânico relevante a ser ponderado.'
         : 'Quadro compatível com etiologia orgânica genuína, sem evidências de simulação ou exagero sintomático deliberado.'
     })\n\n`;
-    out += `Observações de Comportamento Espontâneo:\n"${spontaneousObs}"`;
+    out += `Observações de Comportamento Espontâneo:\n"${spontaneousObs.trim() || '[NÃO INFORMADO]'}"`;
     return out;
   };
 
@@ -98,6 +100,11 @@ export function WaddellValidator() {
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Avaliação de Componente Não-Orgânico e Simulação</h2>
             {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
+            {isTest && (
+              <button type="button" onClick={() => setSpontaneousObs(EXEMPLO_JOAO_OBS)} className="ml-2 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-amber-300 text-amber-200">
+                Carregar exemplo (João)
+              </button>
+            )}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Identificação objetiva de metasimulação (amplificação) sem juízos morais pejorativos, registrando inconsistências anatômicas de forma estritamente técnica.
             </p>

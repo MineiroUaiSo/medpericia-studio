@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
+import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { SimoninCriterion, evaluateSimoninNexity } from '../utils/pericia-calc';
 import { ShieldCheck, AlertTriangle, XCircle, CheckCircle, Copy, Check } from 'lucide-react';
 
-const INITIAL_CRITERIA: SimoninCriterion[] = [
+const EXEMPLO_JOAO: SimoninCriterion[] = [
   {
     id: 1,
     title: '1. Integridade Anterior',
@@ -48,9 +49,16 @@ const INITIAL_CRITERIA: SimoninCriterion[] = [
   },
 ];
 
+const INITIAL_CRITERIA: SimoninCriterion[] = EXEMPLO_JOAO.map((c) => ({
+  ...c,
+  status: 'inconclusivo',
+  justification: '',
+}));
+
 export function SimoninMatrix() {
-  const isTest = useCaseId() === TEST_CASE_ID;
-  const [criteria, setCriteria] = useState<SimoninCriterion[]>(INITIAL_CRITERIA);
+  const caseId = useCaseId();
+  const isTest = caseId === TEST_CASE_ID;
+  const [criteria, setCriteria] = usePersistedState<SimoninCriterion[]>(caseKey(caseId, 'simonin'), INITIAL_CRITERIA);
   const [copied, setCopied] = useState(false);
 
   const evaluation = evaluateSimoninNexity(criteria);
@@ -66,7 +74,7 @@ export function SimoninMatrix() {
   const generateReportText = () => {
     let out = `ANÁLISE DO NEXO CAUSAL — CRITÉRIOS DE SIMONIN\n\n`;
     criteria.forEach((c) => {
-      out += `${c.title.toUpperCase()}: ${c.justification} STATUS: ${c.status.toUpperCase()}.\n\n`;
+      out += `${c.title.toUpperCase()}: ${c.justification.trim() || '[NÃO INFORMADO]'} STATUS: ${c.status.toUpperCase()}.\n\n`;
     });
     out += `CONCLUSÃO DO NEXO: ${evaluation.label}. ${evaluation.summaryText}`;
     return out;
@@ -90,6 +98,11 @@ export function SimoninMatrix() {
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Matriz de Avaliação do Nexo Causal</h2>
             {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
+            {isTest && (
+              <button type="button" onClick={() => setCriteria(EXEMPLO_JOAO)} className="ml-2 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-amber-300 text-amber-200">
+                Carregar exemplo (João)
+              </button>
+            )}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Os 6 critérios que blindam o laudo contra impugnações. O nexo deve ser explicitamente analisado critério por critério.
             </p>

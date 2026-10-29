@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
+import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import {
   SUSEP_TABLE,
   DEGREE_MULTIPLIERS,
@@ -17,19 +18,21 @@ interface SequelaItem {
   calculatedValue: number;
 }
 
+const EXEMPLO_JOAO: { itemId: string; degree: LossDegree } = { itemId: 'cotovelo_anquilose', degree: 'medio' };
+
 export function SusepCalculator() {
-  const isTest = useCaseId() === TEST_CASE_ID;
-  const [selectedItemId, setSelectedItemId] = useState<string>('cotovelo_anquilose');
-  const [selectedDegree, setSelectedDegree] = useState<LossDegree>('medio');
+  const caseId = useCaseId();
+  const isTest = caseId === TEST_CASE_ID;
+  const [selectedItemId, setSelectedItemId] = usePersistedState<string>(caseKey(caseId, 'susep-item'), '');
+  const [selectedDegree, setSelectedDegree] = usePersistedState<LossDegree>(caseKey(caseId, 'susep-grau'), 'medio');
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [sequelaList, setSequelaList] = useState<SequelaItem[]>([
-    {
-      id: 'seq-1',
-      itemId: 'cotovelo_anquilose',
-      degree: 'medio',
-      calculatedValue: 12.5,
-    },
-  ]);
+  const [sequelaList, setSequelaList] = usePersistedState<SequelaItem[]>(caseKey(caseId, 'susep-lista'), []);
+
+  const carregarExemplo = () => {
+    setSelectedItemId(EXEMPLO_JOAO.itemId);
+    setSelectedDegree(EXEMPLO_JOAO.degree);
+    setSequelaList([{ id: 'seq-1', ...EXEMPLO_JOAO, calculatedValue: 12.5 }]);
+  };
 
   const currentItem = SUSEP_TABLE.find((i) => i.id === selectedItemId);
   const currentResult = calculateSusepLoss(selectedItemId, selectedDegree);
@@ -73,14 +76,23 @@ export function SusepCalculator() {
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Calculadora Oficial de Invalidez Permanente</h2>
             {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
+            {isTest && (
+              <button type="button" onClick={carregarExemplo} className="ml-2 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-amber-300 text-amber-200">
+                Carregar exemplo (João)
+              </button>
+            )}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Quantificação pericial objetiva de dano corporal com graduação de perdas parciais e regra de Balthazar para sequelas cumulativas.
             </p>
           </div>
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 min-w-[200px] text-right">
             <span className="text-xs uppercase text-slate-400 font-semibold tracking-wider">{isTest ? 'Exemplo: caso João (fictício)' : 'Resultado atual'}</span>
-            <div className="text-3xl font-extrabold text-emerald-400 mt-1">12,50%</div>
-            <span className="text-xs text-slate-400">25% Cotovelo × 50% Médio</span>
+            <div className="text-3xl font-extrabold text-emerald-400 mt-1">
+              {balthazarResult.totalPercentage.toFixed(2).replace('.', ',')}%
+            </div>
+            <span className="text-xs text-slate-400">
+              {sequelaList.length === 0 ? 'Nenhuma sequela na lista' : `${sequelaList.length} sequela(s) — Balthazar`}
+            </span>
           </div>
         </div>
       </div>
@@ -126,6 +138,7 @@ export function SusepCalculator() {
               onChange={(e) => setSelectedItemId(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">Selecione uma rubrica…</option>
               {filteredItems.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name} — Teto: {item.maxPercentage}%
@@ -186,20 +199,23 @@ export function SusepCalculator() {
             <div>
               <span className="text-xs font-semibold text-slate-500 uppercase">Fórmula de Cálculo Legal</span>
               <div className="font-mono text-sm text-slate-700 dark:text-slate-200 mt-1">
-                {currentItem?.maxPercentage}% (Tabela) × {DEGREE_MULTIPLIERS[selectedDegree].multiplier * 100}% ({DEGREE_MULTIPLIERS[selectedDegree].label})
+                {currentItem
+                  ? `${currentItem.maxPercentage}% (Tabela) × ${DEGREE_MULTIPLIERS[selectedDegree].multiplier * 100}% (${DEGREE_MULTIPLIERS[selectedDegree].label})`
+                  : 'Selecione uma rubrica'}
               </div>
             </div>
             <div className="text-right flex items-center gap-3">
               <div>
                 <span className="text-xs text-slate-400 font-medium">Resultado Parcial</span>
                 <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
-                  {currentResult.toFixed(2)}%
+                  {currentItem ? `${currentResult.toFixed(2)}%` : '—'}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={addSequela}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                disabled={!currentItem}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
                 Adicionar à Lista

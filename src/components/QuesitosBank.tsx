@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { useCaseId, caseKey } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { QUESITOS_LIBRARY, QuesitoItem } from '../data/ifhflixKnowledge';
 import { HelpCircle, CheckSquare, Square, Copy, Check, Filter, Lightbulb, Shield } from 'lucide-react';
 
 export function QuesitosBank() {
   const [selectedArea, setSelectedArea] = useState<string>('all');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [selectedIds, setSelectedIds] = useState<string[]>(['sec-1', 'sec-2', 'ast-1']);
+  const caseId = useCaseId();
+  const [selectedIds, setSelectedIds] = usePersistedState<string[]>(caseKey(caseId, 'quesitos-sel'), []);
   const [copied, setCopied] = useState(false);
 
   const filteredQuesitos = QUESITOS_LIBRARY.filter((q) => {

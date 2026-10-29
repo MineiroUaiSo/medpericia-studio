@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
+import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import {
   HonorariosConfig,
   calculateHonorariosHours,
@@ -16,23 +17,37 @@ import {
   Scale,
 } from 'lucide-react';
 
+const EXEMPLO_JOAO = {
+  comarca: 'São Paulo/SP',
+  vara: '3ª Vara Cível',
+  numeroProcesso: '1004589-32.2026.8.26.0100',
+  autorNome: 'João da Silva',
+  reuNome: 'Seguradora Alfa S/A',
+  peritoNome: 'Dr. Roberto Mendes',
+  peritoCrm: '184.920/SP',
+  peritoEspecialidade: 'Médico Perito Judicial e Assistente Técnico',
+};
+
+const nz = (v: string): string => v.trim() || '[NÃO INFORMADO]';
+
 export function HonorariosCalculator() {
-  const isTest = useCaseId() === TEST_CASE_ID;
-  const [config, setConfig] = useState<HonorariosConfig>({
+  const caseId = useCaseId();
+  const isTest = caseId === TEST_CASE_ID;
+  const [config, setConfig] = usePersistedState<HonorariosConfig>(caseKey(caseId, 'honorarios'), {
     paginasProntuario: 300,
     quantidadeQuesitos: 16,
     horasExameClinico: 2,
     horasDiscussaoRedacao: 4,
     horasVistoria: 0,
     valorHora: 450,
-    comarca: 'São Paulo/SP',
-    vara: '3ª Vara Cível',
-    numeroProcesso: '1004589-32.2026.8.26.0100',
-    autorNome: 'João da Silva',
-    reuNome: 'Seguradora Alfa S/A',
-    peritoNome: 'Dr. Roberto Mendes',
-    peritoCrm: '184.920/SP',
-    peritoEspecialidade: 'Médico Perito Judicial e Assistente Técnico',
+    comarca: '',
+    vara: '',
+    numeroProcesso: '',
+    autorNome: '',
+    reuNome: '',
+    peritoNome: '',
+    peritoCrm: '',
+    peritoEspecialidade: '',
   });
 
   const [copied, setCopied] = useState(false);
@@ -40,13 +55,13 @@ export function HonorariosCalculator() {
   const result = calculateHonorariosHours(config);
 
   const generatePetitionText = () => {
-    return `EXCELENTÍSSIMO(A) SENHOR(A) DOUTOR(A) JUIZ(A) DE DIREITO DA ${config.vara.toUpperCase()} DA COMARCA DE ${config.comarca.toUpperCase()}
+    return `EXCELENTÍSSIMO(A) SENHOR(A) DOUTOR(A) JUIZ(A) DE DIREITO DA ${nz(config.vara).toUpperCase()} DA COMARCA DE ${nz(config.comarca).toUpperCase()}
 
-Processo nº: ${config.numeroProcesso}
-Autor(a): ${config.autorNome}
-Réu(ré): ${config.reuNome}
+Processo nº: ${nz(config.numeroProcesso)}
+Autor(a): ${nz(config.autorNome)}
+Réu(ré): ${nz(config.reuNome)}
 
-${config.peritoNome.toUpperCase()}, médico, inscrito no Conselho Regional de Medicina sob o nº ${config.peritoCrm}, ${config.peritoEspecialidade}, nomeado por este Douto Juízo para atuar como Perito Judicial nos autos em epígrafe, vem, respeitosamente, à presença de Vossa Excelência, em cumprimento ao r. despacho de nomeação, apresentar a presente:
+${nz(config.peritoNome).toUpperCase()}, médico, inscrito no Conselho Regional de Medicina sob o nº ${nz(config.peritoCrm)}, ${nz(config.peritoEspecialidade)}, nomeado por este Douto Juízo para atuar como Perito Judicial nos autos em epígrafe, vem, respeitosamente, à presença de Vossa Excelência, em cumprimento ao r. despacho de nomeação, apresentar a presente:
 
 PROPOSTA DE HONORÁRIOS PERICIAIS PROVISÓRIOS
 
@@ -84,11 +99,11 @@ c) A determinação do depósito prévio dos honorários periciais em conta vinc
 Termos em que,
 Pede deferimento.
 
-${config.comarca}, 2026.
+${nz(config.comarca)}, 2026.
 
 _______________________________________
-${config.peritoNome}
-CRM ${config.peritoCrm} — Perito do Juízo`;
+${nz(config.peritoNome)}
+CRM ${nz(config.peritoCrm)} — Perito do Juízo`;
   };
 
   const handleCopy = () => {
@@ -109,6 +124,11 @@ CRM ${config.peritoCrm} — Perito do Juízo`;
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Calculadora de Honorários Periciais & Gerador de Proposta</h2>
             {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
+            {isTest && (
+              <button type="button" onClick={() => setConfig({ ...config, ...EXEMPLO_JOAO })} className="ml-2 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-amber-300 text-amber-200">
+                Carregar exemplo (João)
+              </button>
+            )}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Fórmula científica de horas técnicas detalhadas: 1h a cada 150 páginas de prontuário e 5 minutos por quesito, gerando petição pronta e blindada contra impugnações.
             </p>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
+import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import {
   FileText,
   AlertTriangle,
@@ -58,17 +59,20 @@ const INITIAL_VICIOS: VicioCPCItem[] = [
   },
 ];
 
+const EXEMPLO_JOAO = {
+  peritoJudicialNome: 'Dr. Perito do Juízo',
+  objetoDivergencia: 'O laudo do perito judicial reconheceu a fratura e a rigidez articular, contudo fixou erroneamente a perda funcional em grau leve (25%), desconsiderando a perda de 50% dos arcos de flexoextensão e a profissiografia de mecânico automotivo que exige ampla mobilidade.',
+  quesitosElucidativos: '1. Queira o Sr. Perito Judicial retificar ou esclarecer a medição goniométrica em graus da flexão e extensão do cotovelo direito do periciando;\n2. Considerando que o periciando perdeu metade do arco articular funcional, esclareça por qual motivo técnico não foi aplicado o enquadramento em Grau Médio (50%) da Tabela SUSEP.',
+};
+
 export function ParecerGenerator() {
-  const isTest = useCaseId() === TEST_CASE_ID;
-  const [tipoConclusao, setTipoConclusao] = useState<'divergencia_parcial' | 'divergencia_total' | 'concordancia' | 'reforco' | 'correcao'>('divergencia_parcial');
-  const [vicios, setVicios] = useState<VicioCPCItem[]>(INITIAL_VICIOS);
-  const [peritoJudicialNome, setPeritoJudicialNome] = useState('Dr. Perito do Juízo');
-  const [objetoDivergencia, setObjetoDivergencia] = useState(
-    'O laudo do perito judicial reconheceu a fratura e a rigidez articular, contudo fixou erroneamente a perda funcional em grau leve (25%), desconsiderando a perda de 50% dos arcos de flexoextensão e a profissiografia de mecânico automotivo que exige ampla mobilidade.'
-  );
-  const [quesitosElucidativos, setQuesitosElucidativos] = useState(
-    '1. Queira o Sr. Perito Judicial retificar ou esclarecer a medição goniométrica em graus da flexão e extensão do cotovelo direito do periciando;\n2. Considerando que o periciando perdeu metade do arco articular funcional, esclareça por qual motivo técnico não foi aplicado o enquadramento em Grau Médio (50%) da Tabela SUSEP.'
-  );
+  const caseId = useCaseId();
+  const isTest = caseId === TEST_CASE_ID;
+  const [tipoConclusao, setTipoConclusao] = usePersistedState<'divergencia_parcial' | 'divergencia_total' | 'concordancia' | 'reforco' | 'correcao'>(caseKey(caseId, 'parecer-tipo'), 'divergencia_parcial');
+  const [vicios, setVicios] = usePersistedState<VicioCPCItem[]>(caseKey(caseId, 'parecer-vicios'), INITIAL_VICIOS);
+  const [peritoJudicialNome, setPeritoJudicialNome] = usePersistedState<string>(caseKey(caseId, 'parecer-perito'), '');
+  const [objetoDivergencia, setObjetoDivergencia] = usePersistedState<string>(caseKey(caseId, 'parecer-objeto'), '');
+  const [quesitosElucidativos, setQuesitosElucidativos] = usePersistedState<string>(caseKey(caseId, 'parecer-quesitos'), '');
   const [copied, setCopied] = useState(false);
 
   const toggleVicio = (id: number) => {
@@ -80,7 +84,7 @@ export function ParecerGenerator() {
     return `PARECER MÉDICO-LEGAL DO ASSISTENTE TÉCNICO
 
 I. DA QUALIFICAÇÃO E OBJETO
-O presente parecer técnico-científico tem por finalidade analisar criticamente as operações e conclusões periciais constantes no laudo apresentado pelo Nobre Perito Judicial, ${peritoJudicialNome}, nos autos do processo em referência.
+O presente parecer técnico-científico tem por finalidade analisar criticamente as operações e conclusões periciais constantes no laudo apresentado pelo Nobre Perito Judicial, ${peritoJudicialNome.trim() || '[NÃO INFORMADO]'}, nos autos do processo em referência.
 
 II. DA MODALIDADE DO PARECER: ${
       tipoConclusao === 'divergencia_parcial'
@@ -107,12 +111,12 @@ ${
 }
 
 IV. DA DIVERGÊNCIA TÉCNICO-CIENTÍFICA (MÉTODO E PROFISSIOGRAFIA)
-${objetoDivergencia}
+${objetoDivergencia.trim() || '[NÃO INFORMADO]'}
 
 V. DOS QUESITOS SUPLEMENTARES E DE ESCLARECIMENTO
 Para que não pairem dúvidas sobre a real extensão do dano corporal e a justa aplicação do direito, requer-se a intimação do D. Perito do Juízo para que responda fundamentadamente aos seguintes quesitos elucidativos:
 
-${quesitosElucidativos}
+${quesitosElucidativos.trim() || '[NÃO INFORMADO]'}
 
 VI. CONCLUSÃO DO ASSISTENTE TÉCNICO
 Diante da robusta literatura médico-legal e das diretrizes do CPC (art. 473) e da Resolução CFM nº 2.430/2025, conclui este assistente técnico que o laudo judicial merece os reparos técnicos pontuados, ratificando-se a necessidade de acolhimento das razões expostas.
@@ -141,6 +145,19 @@ Médico Assistente Técnico — CRM`;
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Gerador de Parecer Técnico & Manifestação Crítica</h2>
             {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
+            {isTest && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPeritoJudicialNome(EXEMPLO_JOAO.peritoJudicialNome);
+                  setObjetoDivergencia(EXEMPLO_JOAO.objetoDivergencia);
+                  setQuesitosElucidativos(EXEMPLO_JOAO.quesitosElucidativos);
+                }}
+                className="ml-2 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-amber-300 text-amber-200"
+              >
+                Carregar exemplo (João)
+              </button>
+            )}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Nomenclatura técnica rigorosa: o médico emite Parecer Médico-Legal (não "impugnação", que é ato processual do advogado), blindado pelos 8 vícios do art. 473 do CPC.
             </p>
