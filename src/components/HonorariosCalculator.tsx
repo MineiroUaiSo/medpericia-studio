@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { dataPorExtenso } from '../utils/dataExtenso';
 import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
 import { usePersistedState } from '../hooks/usePersistedState';
 import {
@@ -103,7 +104,7 @@ c) A determinação do depósito prévio dos honorários periciais em conta vinc
 Termos em que,
 Pede deferimento.
 
-${nz(config.comarca)}, 2026.
+${nz(config.comarca)}, ${dataPorExtenso()}.
 
 _______________________________________
 ${nz(config.peritoNome)}

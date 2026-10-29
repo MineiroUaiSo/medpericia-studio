@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { dataPorExtenso } from '../utils/dataExtenso';
 import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
 import { usePersistedState } from '../hooks/usePersistedState';
 import {
@@ -121,7 +122,7 @@ ${quesitosElucidativos.trim() || '[NÃO INFORMADO]'}
 VI. CONCLUSÃO DO ASSISTENTE TÉCNICO
 Diante da robusta literatura médico-legal e das diretrizes do CPC (art. 473) e da Resolução CFM nº 2.430/2025, conclui este assistente técnico que o laudo judicial merece os reparos técnicos pontuados, ratificando-se a necessidade de acolhimento das razões expostas.
 
-Local, Data de 2026.
+[Cidade/UF], ${dataPorExtenso()}.
 
 ________________________________________
 Médico Assistente Técnico — CRM`;

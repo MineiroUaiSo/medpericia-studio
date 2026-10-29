@@ -68,6 +68,7 @@ export function LaudoJudicialGenerator() {
     <section aria-labelledby="laudo-gen-heading" className="grid lg:grid-cols-2 gap-6">
       <div className="space-y-3">
         <h2 id="laudo-gen-heading" className="font-bold text-lg">Gerador de Laudo Judicial</h2>
+        <p className="text-xs opacity-70">Deixe em branco o que não souber: o laudo marca <strong>[NÃO INFORMADO]</strong>. A IA só deduz do que você colar em "Dados do caso" e marca como <strong>[INFERIDO – confirmar]</strong>; nunca inventa datas.</p>
         <label className="block text-xs font-semibold">Ramo
           <select className={inputCls} value={data.ramo} onChange={(e) => setRamo(e.target.value as RamoId)}>
             {RAMO_IDS.map((id) => <option key={id} value={id}>{RAMOS[id].label}</option>)}
