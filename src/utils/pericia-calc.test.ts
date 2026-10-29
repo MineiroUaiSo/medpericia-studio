@@ -86,3 +86,16 @@ test('calculateHonorariosHours calculates hours based on IFHFLIX rules (150 page
   assert.equal(result.totalHoras, 9.0); // 2 + 1 + 2 + 4 + 0 = 9.0h
   assert.equal(result.valorTotal, 4050); // 9.0 * 450 = 4050
 });
+
+import { buildLaudoSkeleton, EMPTY_LAUDO } from './laudoBuilder';
+
+test('buildLaudoSkeleton numera quesitos e usa CRM com UF', () => {
+  const out = buildLaudoSkeleton({
+    ...EMPTY_LAUDO, esfera: 'trabalhista', crm: 'ES 12345', perito: 'Dr. X',
+    quesitosAutor: '1) Há nexo?\n2) Há incapacidade?',
+  });
+  assert.match(out, /JUIZ\(A\) DO TRABALHO/);
+  assert.match(out, /Quesitos do Reclamante\n1\.2\.1 Há nexo\?\n1\.2\.2 Há incapacidade\?/);
+  assert.match(out, /CRM-ES 12345/);
+  assert.match(out, /sem a presença de assistentes técnicos/);
+});
