@@ -9,6 +9,10 @@ Repo: github.com/MineiroUaiSo/medpericia-studio · site: mineirouaiso.github.io/
 
 - OCR local (Tesseract.js, `src/utils/ocr.ts`): PDFs escaneados e imagens viram texto no navegador (até 25 págs/arquivo; confiança <55% pede transcrição; texto marcado "OCR" no prompt). Testado com PDF sintético (95%, 2 págs em 3,6 s). NÃO testado com os PDFs reais do médico (laudo de vistas 877 KB e laudos/exames 11,7 MB: só as 25 primeiras págs são lidas).
 
+- OCR agora com % por página, barra e ETA (testado). Testado também pelo médico nos PDFs reais: confiança 66% e 63% (scan fraco), texto truncado em 12k chars/arquivo.
+- IA exige chave do usuário (salva só no navegador): OpenRouter (sk-or-…) ou Google (AIza…, usa Gemini direto). Sem chave → mensagem clara. ATENÇÃO privacidade: tier gratuito do Gemini pode usar conteúdo para melhorar produtos → não enviar dados identificáveis de paciente nele. Memória: crédito OpenRouter do médico acabou em 2026-10-02.
+- Próximo passo sugerido: teste da análise completa com chave + docs OCR (esperado `[INFERIDO – confirmar]`).
+
 ## Normas (pesquisado 2026-10-29)
 - Res. CFM 2.430/2025: confirmada (publ. 30/05/2025, republ. 04/06/2025; revoga 1.497/1998 e 2.325/2022). Texto oficial: sistemas.cfm.org.br/normas/arquivos/resolucoes/BR/2025/2430_2025.pdf
 - Lei 11.945/2009: origem da tabela de graduação anexa à Lei 6.194/1974; STJ Súm. 474 e 544 a sustentam. NÃO verificado: vigência atual do DPVAT/SPVAT (checar Planalto/SUSEP antes de afirmar "vigente").
