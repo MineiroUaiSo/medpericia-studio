@@ -1,3 +1,4 @@
+import { ESFERAS, type LaudoData } from './laudoBuilder';
 import { MARCADOR_VAZIO, buildRamoPromptBlock, getRamo, type RamoId } from '../data/ramos';
 
 export const INSTRUCAO_DEDUCAO = `REGRA DE CAMPOS EM BRANCO (OBRIGATÓRIA):
@@ -44,4 +45,30 @@ ${checklistSummary}
 ${INSTRUCAO_DEDUCAO}
 
 Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX), emita a Nota Técnica de Viabilidade completa para o advogado, apontando diagnóstico, plausibilidade do nexo (Simonin), riscos da defesa adversa, enquadramento de dano e veredito final com score de viabilidade (0 a 100%).`;
+}
+
+export interface LaudoDiscussaoInput {
+  data: LaudoData;
+  notas: string;
+}
+
+export function buildLaudoDiscussaoPrompt({ data: d, notas }: LaudoDiscussaoInput): string {
+  const e = ESFERAS[d.esfera];
+  return `Redija APENAS "4. DISCUSSÃO" (4.1 introdução, 4.2 metodologia, 4.3 análise, 4.4 literatura) e "5. CONCLUSÃO" do laudo, usando SOMENTE os dados abaixo. Não invente achados.
+
+Esfera: ${e.label}
+
+${buildRamoPromptBlock(d.ramo, d.marcos)}
+
+Quesitos do juízo:
+${orVazio(d.quesitosJuizo)}
+Quesitos ${e.autor}:
+${orVazio(d.quesitosAutor)}
+Quesitos ${e.reu}:
+${orVazio(d.quesitosReu)}
+
+${INSTRUCAO_DEDUCAO}
+
+DADOS DO CASO:
+${notas}`;
 }

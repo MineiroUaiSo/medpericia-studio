@@ -1,7 +1,11 @@
+import { getRamo, type RamoId, type Valoracao } from '../data/ramos';
+
 export type Esfera = 'civel' | 'trabalhista' | 'federal';
 
 export interface LaudoData {
   esfera: Esfera;
+  ramo: RamoId;
+  marcos: Record<string, string>;
   vara: string;
   comarca: string;
   processo: string;
@@ -30,7 +34,7 @@ export interface LaudoData {
 }
 
 export const EMPTY_LAUDO: LaudoData = {
-  esfera: 'civel', vara: '', comarca: '', processo: '', autor: '', reu: '',
+  esfera: 'civel', ramo: 'civel_dano', marcos: {}, vara: '', comarca: '', processo: '', autor: '', reu: '',
   perito: '', crm: '', rqe: '', formacao: '', dataPericia: '', horaPericia: '',
   localPericia: '', atParte: '', atNome: '', periciando: '', rg: '', cpf: '',
   nascimento: '', profissao: '', quesitosJuizo: '', quesitosAutor: '',
@@ -41,6 +45,13 @@ export const ESFERAS: Record<Esfera, { label: string; juiz: string; autor: strin
   civel: { label: 'Cível', juiz: 'JUIZ(A) DE DIREITO DA {v} VARA CÍVEL', autor: 'Autor', reu: 'Réu' },
   trabalhista: { label: 'Trabalhista', juiz: 'JUIZ(A) DO TRABALHO DA {v} VARA DO TRABALHO', autor: 'Reclamante', reu: 'Reclamada' },
   federal: { label: 'Previdenciário/Federal', juiz: 'JUIZ(A) FEDERAL DA {v} VARA FEDERAL', autor: 'Autor', reu: 'Réu' },
+};
+
+const ANALISE_43: Record<Valoracao, string> = {
+  susep: 'nexo causal — Simonin; valoração do dano (tabela indicada pelo juízo/SUSEP)',
+  dano_corporal: 'nexo causal — Simonin; valoração do dano (tabela indicada pelo juízo/SUSEP)',
+  incapacidade: 'nexo (se acidentário); existência, DID, DII, tipo e grau de incapacidade; reabilitação',
+  conduta: 'conduta × boas práticas à época; nexo conduta–dano; dano',
 };
 
 const f = (v: string, ph: string) => (v.trim() ? v.trim() : `[${ph}]`);
@@ -54,6 +65,8 @@ function numerar(prefixo: string, texto: string): string {
 /** Monta o esqueleto do laudo; seções 4–9 ficam como guias a preencher. */
 export function buildLaudoSkeleton(d: LaudoData): string {
   const e = ESFERAS[d.esfera];
+  const ramo = getRamo(d.ramo);
+  const objeto = ramo.campos.map((c) => `${c.label}: ${f(d.marcos[c.key] ?? '', 'NÃO INFORMADO')}`).join('\n');
   const rqe = d.rqe.trim() ? `, RQE ${d.rqe.trim()}` : '';
   const at = d.atNome.trim()
     ? `com a presença do assistente técnico da parte ${f(d.atParte, e.autor.toLowerCase())}, Dr(a). ${d.atNome.trim()}`
@@ -85,6 +98,9 @@ Data de nascimento: ${f(d.nascimento, 'XX/XX/XXXX')}
 Profissão: ${f(d.profissao, 'profissão')}
 Estado civil / Naturalidade / Sexo / Escolaridade / Endereço: [preencher]
 
+DADOS DO OBJETO PERICIAL (${ramo.label})
+${objeto}
+
 1. QUESITOS
 ${quesitos}
 
@@ -103,7 +119,7 @@ ${quesitos}
 4. DISCUSSÃO
 4.1 Introdução / objeto da perícia
 4.2 Metodologia (parágrafo obrigatório)
-4.3 Análise (nexo causal — Simonin; incapacidade; valoração do dano — SUSEP)
+4.3 Análise (${ANALISE_43[ramo.valoracao[0]]})
 4.4 Literatura médica
 
 5. CONCLUSÃO

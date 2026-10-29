@@ -4,8 +4,12 @@ import { buildLaudoSkeleton, EMPTY_LAUDO, ESFERAS, type Esfera, type LaudoData }
 import { caseKey, useCaseId } from '../context/CaseContext';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { callAI, SYSTEM_PROMPTS } from '../services/aiService';
+import { RAMO_IDS, RAMOS, type RamoId } from '../data/ramos';
+import { buildLaudoDiscussaoPrompt } from '../utils/promptBuilders';
 
-const FIELDS: { key: keyof LaudoData; label: string }[] = [
+type CampoTexto = Exclude<keyof LaudoData, 'marcos' | 'ramo' | 'esfera'>;
+
+const FIELDS: { key: CampoTexto; label: string }[] = [
   { key: 'vara', label: 'Nº da vara' }, { key: 'comarca', label: 'Comarca/UF' },
   { key: 'processo', label: 'Processo Nº' }, { key: 'autor', label: 'Autor/Reclamante' },
   { key: 'reu', label: 'Réu/Reclamada' }, { key: 'perito', label: 'Perito' },
@@ -23,14 +27,20 @@ const inputCls = 'w-full rounded-lg border border-slate-300 dark:border-slate-70
 
 export function LaudoJudicialGenerator() {
   const caseId = useCaseId();
-  const [data, setData] = usePersistedState<LaudoData>(caseKey(caseId, 'laudogen'), EMPTY_LAUDO);
+  const [stored, setData] = usePersistedState<LaudoData>(caseKey(caseId, 'laudogen'), EMPTY_LAUDO);
+  const data: LaudoData = { ...EMPTY_LAUDO, ...stored };
   const [notas, setNotas] = usePersistedState(caseKey(caseId, 'laudogen-notas'), '');
   const [ia, setIa] = usePersistedState(caseKey(caseId, 'laudogen-ia'), '');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const set = (k: keyof LaudoData, v: string) => setData((d) => ({ ...d, [k]: v }));
+  const set = (k: CampoTexto | 'esfera', v: string) => setData((d) => ({ ...EMPTY_LAUDO, ...d, [k]: v }));
+  const setRamo = (ramo: RamoId) =>
+    setData((d) => ({ ...EMPTY_LAUDO, ...d, ramo, esfera: RAMOS[ramo].esferaSugerida }));
+  const setMarco = (key: string, v: string) =>
+    setData((d) => ({ ...EMPTY_LAUDO, ...d, marcos: { ...(d.marcos ?? {}), [key]: v } }));
+  const ramo = RAMOS[data.ramo] ?? RAMOS.civel_dano;
   const texto = useMemo(() => buildLaudoSkeleton(data), [data]);
   const completo = ia ? `${texto}\n\n--- RASCUNHO IA: DISCUSSÃO E CONCLUSÃO (revisar) ---\n${ia}` : texto;
 
@@ -45,7 +55,7 @@ export function LaudoJudicialGenerator() {
     setErro('');
     setLoading(true);
     try {
-      const prompt = `Redija APENAS "4. DISCUSSÃO" (4.1 introdução, 4.2 metodologia, 4.3 análise, 4.4 literatura) e "5. CONCLUSÃO" do laudo, usando SOMENTE os dados abaixo. Não invente achados; o que faltar, marque [NÃO INFORMADO].\n\nEsfera: ${ESFERAS[data.esfera].label}\nQuesitos do juízo:\n${data.quesitosJuizo}\nQuesitos ${ESFERAS[data.esfera].autor}:\n${data.quesitosAutor}\nQuesitos ${ESFERAS[data.esfera].reu}:\n${data.quesitosReu}\n\nDADOS DO CASO:\n${notas}`;
+      const prompt = buildLaudoDiscussaoPrompt({ data, notas });
       setIa(await callAI(prompt, SYSTEM_PROMPTS.laudoPericial, true));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha na IA.');
@@ -58,6 +68,26 @@ export function LaudoJudicialGenerator() {
     <section aria-labelledby="laudo-gen-heading" className="grid lg:grid-cols-2 gap-6">
       <div className="space-y-3">
         <h2 id="laudo-gen-heading" className="font-bold text-lg">Gerador de Laudo Judicial</h2>
+        <label className="block text-xs font-semibold">Ramo
+          <select className={inputCls} value={data.ramo} onChange={(e) => setRamo(e.target.value as RamoId)}>
+            {RAMO_IDS.map((id) => <option key={id} value={id}>{RAMOS[id].label}</option>)}
+          </select>
+        </label>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {ramo.campos.map((c) => (
+            <label key={c.key} className="block text-xs font-semibold">{c.label}
+              {c.tipo === 'select' ? (
+                <select className={inputCls} value={data.marcos[c.key] ?? ''} onChange={(e) => setMarco(c.key, e.target.value)}>
+                  <option value="">Selecione…</option>
+                  {c.opcoes?.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : (
+                <input className={inputCls} value={data.marcos[c.key] ?? ''} placeholder={c.tipo === 'data' ? 'dd/mm/aaaa' : ''} onChange={(e) => setMarco(c.key, e.target.value)} />
+              )}
+              {c.ajuda && <span className="block text-[10px] font-normal opacity-60">{c.ajuda}</span>}
+            </label>
+          ))}
+        </div>
         <label className="block text-xs font-semibold">Esfera
           <select className={inputCls} value={data.esfera} onChange={(e) => set('esfera', e.target.value as Esfera)}>
             {Object.entries(ESFERAS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
