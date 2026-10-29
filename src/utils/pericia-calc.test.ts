@@ -99,3 +99,15 @@ test('buildLaudoSkeleton numera quesitos e usa CRM com UF', () => {
   assert.match(out, /CRM-ES 12345/);
   assert.match(out, /sem a presença de assistentes técnicos/);
 });
+
+import { buildAssunto, buildEmail, EMPTY_EMAIL } from './emailVaras';
+
+test('buildEmail/buildAssunto por destinatário', () => {
+  assert.equal(buildAssunto({ ...EMPTY_EMAIL, destinatario: 'posNomeacao', numeroAutos: '123-4' }), 'NOMEAÇÃO AUTOS 123-4');
+  assert.equal(buildAssunto(EMPTY_EMAIL), 'IMPORTANTE / URGENTE');
+  const juiz = buildEmail({ ...EMPTY_EMAIL, perito: 'Dr. X', crm: 'ES 1' });
+  assert.match(juiz, /^Exmo\. Juiz de Direito/);
+  assert.match(juiz, /CRM-ES 1/);
+  assert.match(juiz, /melhor me adaptar/);
+  assert.doesNotMatch(buildEmail({ ...EMPTY_EMAIL, destinatario: 'diretor' }), /melhor me adaptar/);
+});
