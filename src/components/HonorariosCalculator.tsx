@@ -55,6 +55,15 @@ export function HonorariosCalculator() {
   const result = calculateHonorariosHours(config);
 
   const generatePetitionText = () => {
+    const escopo: string[] = [
+      `Leitura, estudo minucioso e fichamento dos autos eletrônicos e prontuários médicos acostados (${config.paginasProntuario} páginas);`,
+      `Realização do exame físico pericial objetivo com goniometria, manobras ortopédicas/neurológicas específicas e aplicação de protocolos de validação funcional;`,
+      ...(config.horasVistoria > 0 ? ['Deslocamento e vistoria técnica ao posto de trabalho/local dos fatos;'] : []),
+      `Análise do nexo causal etiopatogênico pelos critérios médico-legais consagrados (Critérios de Simonin);`,
+      `Valoração médico-legal do dano corporal e/ou da incapacidade, conforme o objeto da perícia e a metodologia indicada pelo juízo;`,
+      `Redação analítica da discussão e conclusão médico-legal;`,
+      `Resposta fundamentada a cada um dos ${config.quantidadeQuesitos} quesitos apresentados pelas partes e pelo Juízo.`,
+    ];
     return `EXCELENTÍSSIMO(A) SENHOR(A) DOUTOR(A) JUIZ(A) DE DIREITO DA ${nz(config.vara).toUpperCase()} DA COMARCA DE ${nz(config.comarca).toUpperCase()}
 
 Processo nº: ${nz(config.numeroProcesso)}
@@ -68,12 +77,7 @@ PROPOSTA DE HONORÁRIOS PERICIAIS PROVISÓRIOS
 1. DO ESCOPO DOS TRABALHOS PERICIAIS
 Para a elaboração de laudo pericial médico consistente, fundamentado e em estrita consonância com os preceitos do art. 473 do Código de Processo Civil e da Resolução CFM nº 2.430/2025, faz-se necessária a execução das seguintes etapas técnico-procedimentais:
 
-a) Leitura, estudo minucioso e fichamento dos autos eletrônicos e prontuários médicos acostados (${config.paginasProntuario} páginas);
-b) Realização do exame físico pericial objetivo com goniometria, manobras ortopédicas/neurológicas específicas e aplicação de protocolos de validação funcional;
-${config.horasVistoria > 0 ? `c) Deslocamento e vistoria técnica ao posto de trabalho/local dos fatos;\n` : ''}c) Análise do nexo causal etiopatogênico pelos critérios médico-legais consagrados (Critérios de Simonin);
-d) Quantificação objetiva do dano corporal permanente à luz da Tabela SUSEP/DPVAT (Lei nº 11.945/2009);
-e) Redação analítica da discussão e conclusão médico-legal;
-f) Resposta fundamentada a cada um dos ${config.quantidadeQuesitos} quesitos apresentados pelas partes e pelo Juízo.
+${escopo.map((t, i) => `${'abcdefgh'[i]}) ${t}`).join('\n')}
 
 2. DO CÁLCULO ESTIMATIVO DE HORAS TÉCNICAS (PARÂMETROS DA DOUTRINA MÉDICO-LEGAL)
 Adota-se a metodologia consagrada de discriminação de horas trabalhadas por complexidade de tarefa:
