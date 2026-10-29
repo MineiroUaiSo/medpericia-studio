@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCaseId, caseKey, TEST_CASE_ID } from '../context/CaseContext';
 import { usePersistedState } from '../hooks/usePersistedState';
 import {
@@ -66,7 +66,24 @@ export function ViabilidadeAnalyzer() {
   const [relatoFatos, setRelatoFatos] = usePersistedState<string>(k('relatoFatos'), '');
   const [documentChecklist, setDocumentChecklist] = usePersistedState<Record<string, boolean>>(k('checklist'), {});
 
-  const [uploadedFiles, setUploadedFiles] = useState<ExtractedDocument[]>([]);
+  // Guarda o texto já extraído (não o arquivo bruto) por caso; leituras interrompidas por reload são descartadas.
+  const docsKey = k('docs');
+  const [uploadedFiles, setUploadedFiles] = useState<ExtractedDocument[]>(() => {
+    try {
+      const raw = localStorage.getItem(docsKey);
+      return raw ? (JSON.parse(raw) as ExtractedDocument[]).filter((d) => d.status !== 'extracting') : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    if (uploadedFiles.some((d) => d.status === 'extracting')) return;
+    try {
+      localStorage.setItem(docsKey, JSON.stringify(uploadedFiles.map(({ progress: _p, ...d }) => d)));
+    } catch {
+      // storage cheio/indisponível: os documentos seguem só em memória
+    }
+  }, [uploadedFiles, docsKey]);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [viabilityScore, setViabilityScore] = usePersistedState<number | null>(k('score'), isTest ? 85 : null);
@@ -352,7 +369,7 @@ export function ViabilidadeAnalyzer() {
             <div className="space-y-2">
               {uploadedFiles.length === 0 && (
                 <p className="text-[11px] text-slate-500 italic">
-                  Anexe PDF, DOCX, TXT ou MD. Extração local no browser (sem enviar arquivo bruto à IA). Scan/foto: OCR local grátis (até 25 páginas por arquivo, o arquivo não sai do navegador). Manuscrito ou OCR de baixa confiança: pede transcrição.
+                  Anexe PDF, DOCX, TXT ou MD. Extração local no browser (sem enviar arquivo bruto à IA). Scan/foto: OCR local grátis (até 25 páginas por arquivo, o arquivo não sai do navegador). Manuscrito ou OCR de baixa confiança: pede transcrição. O texto extraído fica salvo neste navegador (por caso), então sobrevive a recarregar a página; o arquivo original não.
                 </p>
               )}
               {uploadedFiles.map((f) => (
