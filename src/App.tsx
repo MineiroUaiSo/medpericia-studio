@@ -14,6 +14,7 @@ import {
   Briefcase,
   Layers,
   Stethoscope,
+  Sparkles,
 } from 'lucide-react';
 import { JoaoCaseViewer } from './components/JoaoCaseViewer';
 import { SusepCalculator } from './components/SusepCalculator';
