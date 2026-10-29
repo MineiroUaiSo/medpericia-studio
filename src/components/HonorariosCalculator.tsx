@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
 import {
   HonorariosConfig,
   calculateHonorariosHours,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 export function HonorariosCalculator() {
+  const isTest = useCaseId() === TEST_CASE_ID;
   const [config, setConfig] = useState<HonorariosConfig>({
     paginasProntuario: 300,
     quantidadeQuesitos: 16,
@@ -106,6 +108,7 @@ CRM ${config.peritoCrm} — Perito do Juízo`;
               Metodologia de Precificação IFHFLIX / CPC Art. 465
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Calculadora de Honorários Periciais & Gerador de Proposta</h2>
+            {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Fórmula científica de horas técnicas detalhadas: 1h a cada 150 páginas de prontuário e 5 minutos por quesito, gerando petição pronta e blindada contra impugnações.
             </p>

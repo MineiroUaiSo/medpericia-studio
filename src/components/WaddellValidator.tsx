@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
 import { Eye, ShieldAlert, Check, Copy, AlertOctagon } from 'lucide-react';
 
 interface WaddellItem {
@@ -48,6 +49,7 @@ const INITIAL_WADDELL: WaddellItem[] = [
 ];
 
 export function WaddellValidator() {
+  const isTest = useCaseId() === TEST_CASE_ID;
   const [waddellList, setWaddellList] = useState<WaddellItem[]>(INITIAL_WADDELL);
   const [spontaneousObs, setSpontaneousObs] = useState<string>(
     'Durante a anamnese, o periciando retirou e colocou sua jaqueta com auxílio de ambos os membros, porém com nítida cautela ao estender o cotovelo direito. Não foram observadas incongruências com a limitação de arco de movimento relatada.'
@@ -95,6 +97,7 @@ export function WaddellValidator() {
               Sinais de Waddell & Validação Funcional
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Avaliação de Componente Não-Orgânico e Simulação</h2>
+            {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Identificação objetiva de metasimulação (amplificação) sem juízos morais pejorativos, registrando inconsistências anatômicas de forma estritamente técnica.
             </p>

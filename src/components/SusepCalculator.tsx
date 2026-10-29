@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
 import {
   SUSEP_TABLE,
   DEGREE_MULTIPLIERS,
@@ -17,6 +18,7 @@ interface SequelaItem {
 }
 
 export function SusepCalculator() {
+  const isTest = useCaseId() === TEST_CASE_ID;
   const [selectedItemId, setSelectedItemId] = useState<string>('cotovelo_anquilose');
   const [selectedDegree, setSelectedDegree] = useState<LossDegree>('medio');
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -70,12 +72,13 @@ export function SusepCalculator() {
               Tabela SUSEP / DPVAT (Lei nº 11.945/2009)
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Calculadora Oficial de Invalidez Permanente</h2>
+            {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Quantificação pericial objetiva de dano corporal com graduação de perdas parciais e regra de Balthazar para sequelas cumulativas.
             </p>
           </div>
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 min-w-[200px] text-right">
-            <span className="text-xs uppercase text-slate-400 font-semibold tracking-wider">Caso João da Silva</span>
+            <span className="text-xs uppercase text-slate-400 font-semibold tracking-wider">{isTest ? 'Exemplo: caso João (fictício)' : 'Resultado atual'}</span>
             <div className="text-3xl font-extrabold text-emerald-400 mt-1">12,50%</div>
             <span className="text-xs text-slate-400">25% Cotovelo × 50% Médio</span>
           </div>

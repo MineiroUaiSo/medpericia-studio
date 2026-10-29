@@ -96,7 +96,7 @@ export default function App() {
   const navItems = [
     { id: 'laudo', label: isTest ? 'Laudo: João da Silva' : 'Laudo do caso', icon: FileText, badge: isTest ? 'Teste' : 'Caso Ativo', group: 'pericia' },
     { id: 'viabilidade', label: 'Análise de Viabilidade', icon: FileCheck, badge: 'Documentos & IA', group: 'assistencia' },
-    { id: 'susep', label: 'Tabela SUSEP & Balthazar', icon: Calculator, badge: '12,5%', group: 'pericia' },
+    { id: 'susep', label: 'Tabela SUSEP & Balthazar', icon: Calculator, group: 'pericia' },
     { id: 'simonin', label: 'Nexo Causal (Simonin)', icon: ShieldCheck, badge: '6/6 Pleno', group: 'pericia' },
     { id: 'honorarios', label: 'Proposta de Honorários', icon: Coins, badge: 'CPC 465', group: 'negocio' },
     { id: 'quesitos', label: 'Banco de Quesitos', icon: HelpCircle, badge: 'IFHFLIX', group: 'assistencia' },

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCaseId, TEST_CASE_ID } from '../context/CaseContext';
 import {
   FileText,
   AlertTriangle,
@@ -58,6 +59,7 @@ const INITIAL_VICIOS: VicioCPCItem[] = [
 ];
 
 export function ParecerGenerator() {
+  const isTest = useCaseId() === TEST_CASE_ID;
   const [tipoConclusao, setTipoConclusao] = useState<'divergencia_parcial' | 'divergencia_total' | 'concordancia' | 'reforco' | 'correcao'>('divergencia_parcial');
   const [vicios, setVicios] = useState<VicioCPCItem[]>(INITIAL_VICIOS);
   const [peritoJudicialNome, setPeritoJudicialNome] = useState('Dr. Perito do Juízo');
@@ -138,6 +140,7 @@ Médico Assistente Técnico — CRM`;
               Atuação do Médico Assistente Técnico (CPC & IFHFLIX)
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Gerador de Parecer Técnico & Manifestação Crítica</h2>
+            {isTest && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">Exemplo — caso fictício de teste</span>}
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
               Nomenclatura técnica rigorosa: o médico emite Parecer Médico-Legal (não "impugnação", que é ato processual do advogado), blindado pelos 8 vícios do art. 473 do CPC.
             </p>
