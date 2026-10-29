@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import {
   FileCheck,
   Upload,
-  FileText,
   AlertTriangle,
   CheckCircle2,
-  XCircle,
   Copy,
   Check,
   Sparkles,
@@ -13,18 +11,13 @@ import {
   Trash2,
   Scale,
   ShieldCheck,
-  FileQuestion,
-  HelpCircle,
 } from 'lucide-react';
 import { callAI, SYSTEM_PROMPTS } from '../services/aiService';
-
-interface UploadedDocument {
-  id: string;
-  name: string;
-  size: string;
-  type: string;
-  contentSnippet: string;
-}
+import {
+  extractDocument,
+  buildDocumentsPrompt,
+  type ExtractedDocument,
+} from '../utils/documentExtractor';
 
 export function ViabilidadeAnalyzer() {
   const [caseType, setCaseType] = useState<string>('securitario');
@@ -43,22 +36,7 @@ export function ViabilidadeAnalyzer() {
     carteiraTrabalho: true,
   });
 
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedDocument[]>([
-    {
-      id: 'doc-1',
-      name: 'Laudo_Radiografia_Olecranon_10jan.pdf',
-      size: '1.2 MB',
-      type: 'Laudo de Imagem',
-      contentSnippet: 'Fratura cominutiva do olécrano direito com desvio de 4mm dos fragmentos articulares. Ausência de artrose prévia.',
-    },
-    {
-      id: 'doc-2',
-      name: 'Boletim_Atendimento_PS_Trauma.pdf',
-      size: '850 KB',
-      type: 'Prontuário de PS',
-      contentSnippet: 'Entrada às 18h40 vítima de acidente automobilístico (passageiro dianteiro). Dor intensa, edema e impotência funcional em cotovelo D.',
-    },
-  ]);
+  const [uploadedFiles, setUploadedFiles] = useState<ExtractedDocument[]>([]);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [viabilityScore, setViabilityScore] = useState<number>(85);
@@ -79,26 +57,32 @@ RECOMENDAÇÃO AO ADVOGADO: O caso está pronto para ajuizamento seguro. Juntar 
 
   const [copied, setCopied] = useState<boolean>(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files?.length) return;
+    const selected = Array.from(files);
+    e.target.value = '';
 
-    const newDocs: UploadedDocument[] = [];
-    Array.from(files).forEach((file, index) => {
-      newDocs.push({
-        id: `upload-${Date.now()}-${index}`,
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(0)} KB`,
-        type: file.type || 'Documento',
-        contentSnippet: `Documento recebido: ${file.name} (${(file.size / 1024).toFixed(0)} KB). Pronto para processamento técnico.`,
-      });
+    const placeholders: ExtractedDocument[] = selected.map((file, index) => ({
+      id: `pending-${Date.now()}-${index}`,
+      name: file.name,
+      size: `${Math.max(1, Math.round(file.size / 1024))} KB`,
+      mime: file.type || 'application/octet-stream',
+      status: 'extracting',
+      markdown: '',
+      charCount: 0,
+    }));
+    setUploadedFiles((prev) => [...prev, ...placeholders]);
+
+    const extracted = await Promise.all(selected.map((file) => extractDocument(file)));
+    setUploadedFiles((prev) => {
+      const withoutPlaceholders = prev.filter((doc) => !placeholders.some((p) => p.id === doc.id));
+      return [...withoutPlaceholders, ...extracted];
     });
-
-    setUploadedFiles([...uploadedFiles, ...newDocs]);
   };
 
   const removeFile = (id: string) => {
-    setUploadedFiles(uploadedFiles.filter((f) => f.id !== id));
+    setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   const toggleChecklist = (key: keyof typeof documentChecklist) => {
@@ -109,7 +93,7 @@ RECOMENDAÇÃO AO ADVOGADO: O caso está pronto para ajuizamento seguro. Juntar 
     setIsLoading(true);
     setNotaTecnicaResult('');
 
-    const docsSummary = uploadedFiles.map((d) => `• ${d.name} (${d.type}): ${d.contentSnippet}`).join('\n');
+    const docsSummary = buildDocumentsPrompt(uploadedFiles);
     const checklistSummary = Object.entries(documentChecklist)
       .map(([k, v]) => `- ${k}: ${v ? 'DISPONÍVEL' : 'AUSENTE'}`)
       .join('\n');
@@ -131,7 +115,7 @@ ${checklistSummary}
 Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX), emita a Nota Técnica de Viabilidade completa para o advogado, apontando diagnóstico, plausibilidade do nexo (Simonin), riscos da defesa adversa, enquadramento de dano e veredito final com score de viabilidade (0 a 100%).`;
 
     try {
-      const response = await callAI(prompt, SYSTEM_PROMPTS.analiseViabilidade, true);
+      const response = await callAI(prompt, SYSTEM_PROMPTS.analiseViabilidade, false);
       setNotaTecnicaResult(response);
 
       // Calcula score estimado com base na presença documental
@@ -275,7 +259,7 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.txt,.docx,.png,.jpg,.jpeg"
+                  accept=".pdf,.txt,.md,.docx,.png,.jpg,.jpeg,.webp"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
@@ -284,21 +268,34 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
 
             {/* Uploaded Files List */}
             <div className="space-y-2">
+              {uploadedFiles.length === 0 && (
+                <p className="text-[11px] text-slate-500 italic">
+                  Anexe PDF, DOCX, TXT ou MD. Extração local no browser (sem enviar arquivo bruto à IA). Scan/manuscrito/foto: avisa transcrição.
+                </p>
+              )}
               {uploadedFiles.map((f) => (
                 <div
                   key={f.id}
                   className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3 text-xs"
                 >
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 min-w-0">
                     <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-blue-500" />
-                      {f.name}
+                      {f.status === 'extracting' ? (
+                        <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                      ) : f.status === 'extracted' ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                      )}
+                      <span className="truncate">{f.name}</span>
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      {f.type} • {f.size}
+                      {f.mime || 'Documento'} • {f.size}
+                      {f.status === 'extracted' ? ` • ${f.charCount} chars → .md` : ''}
+                      {f.status === 'extracting' ? ' • extraindo texto…' : ''}
                     </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-400 italic line-clamp-1">
-                      "{f.contentSnippet}"
+                    <div className="text-[11px] text-slate-600 dark:text-slate-400 italic line-clamp-2">
+                      {f.warning || (f.markdown ? `"${f.markdown.slice(0, 160)}"` : '')}
                     </div>
                   </div>
                   <button
@@ -347,7 +344,7 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
 
             <button
               type="button"
-              disabled={isLoading}
+              disabled={isLoading || uploadedFiles.some((f) => f.status === 'extracting')}
               onClick={handleRunAnalysis}
               className="w-full py-3 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >

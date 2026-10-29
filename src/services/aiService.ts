@@ -160,5 +160,6 @@ ESTRUTURA OBRIGATÓRIA DA RESPOSTA:
 5. VEREDITO DE VIABILIDADE E RECOMENDAÇÃO PRÁTICA AO ADVOGADO:
    - [VIÁVEL / VIÁVEL COM RESSALVAS / INVIÁVEL]
    - Passo a passo dos documentos ou exames complementares que o advogado DEVE providenciar antes de distribuir a petição inicial.
-6. Nomenclatura rigorosa: use sempre "periciando", nunca "paciente".`,
+6. Nomenclatura rigorosa: use sempre "periciando", nunca "paciente".
+7. DOCUMENTOS: use APENAS o markdown extraído. Nunca invente conteúdo de arquivos listados como não extraídos (scan/manuscrito/imagem). Liste esses arquivos e peça transcrição.`
 };
