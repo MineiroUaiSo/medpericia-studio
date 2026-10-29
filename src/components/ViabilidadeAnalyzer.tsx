@@ -15,6 +15,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { callAI, SYSTEM_PROMPTS } from '../services/aiService';
+import { RAMO_IDS, RAMOS, getRamo, type RamoId } from '../data/ramos';
+import { buildViabilidadePrompt } from '../utils/promptBuilders';
 import {
   extractDocument,
   buildDocumentsPrompt,
@@ -37,7 +39,7 @@ RECOMENDAÇÃO AO ADVOGADO: O caso está pronto para ajuizamento seguro. Juntar 
 
 const EXEMPLO_JOAO = {
   profissao: 'Mecânico de veículos automotores',
-  dataSinistro: '10/01/2026',
+  marcos: { dataSinistro: '10/01/2026' } as Record<string, string>,
   relatoFatos: 'Periciando sofreu colisão automobilística em 10/01/2026, com choque direto do cotovelo direito no painel do carro. No PS, radiografia evidenciou fratura de olécrano. Foi submetido a cirurgia de fixação com placa e parafusos em 14/01/2026. Evoluiu com calo ósseo exuberante e rigidez articular, perdendo metade da amplitude de movimento de flexoextensão. Prontuários antigos do plano de saúde não registram queixas anteriores no membro.',
   documentChecklist: {
     prontuarioUrgencia: true,
@@ -49,15 +51,6 @@ const EXEMPLO_JOAO = {
   },
 };
 
-const CHECKLIST_VAZIO = {
-  prontuarioUrgencia: false,
-  laudoImagem: false,
-  relatorioCirurgico: false,
-  boletimOcorrencia: false,
-  laudoINSS: false,
-  carteiraTrabalho: false,
-};
-
 const TAG_EXEMPLO =
   'inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300';
 
@@ -66,11 +59,12 @@ export function ViabilidadeAnalyzer() {
   const isTest = caseId === TEST_CASE_ID;
   const k = (campo: string) => caseKey(caseId, `viab-${campo}`);
 
-  const [caseType, setCaseType] = usePersistedState<string>(k('caseType'), 'securitario');
+  const [caseType, setCaseType] = usePersistedState<RamoId>(k('caseType'), 'securitario');
+  const ramo = getRamo(caseType);
   const [profissao, setProfissao] = usePersistedState<string>(k('profissao'), '');
-  const [dataSinistro, setDataSinistro] = usePersistedState<string>(k('dataSinistro'), '');
+  const [marcos, setMarcos] = usePersistedState<Record<string, string>>(k('marcos'), {});
   const [relatoFatos, setRelatoFatos] = usePersistedState<string>(k('relatoFatos'), '');
-  const [documentChecklist, setDocumentChecklist] = usePersistedState(k('checklist'), CHECKLIST_VAZIO);
+  const [documentChecklist, setDocumentChecklist] = usePersistedState<Record<string, boolean>>(k('checklist'), {});
 
   const [uploadedFiles, setUploadedFiles] = useState<ExtractedDocument[]>([]);
 
@@ -89,7 +83,8 @@ export function ViabilidadeAnalyzer() {
 
   const carregarExemplo = () => {
     setProfissao(EXEMPLO_JOAO.profissao);
-    setDataSinistro(EXEMPLO_JOAO.dataSinistro);
+    setCaseType('securitario');
+    setMarcos(EXEMPLO_JOAO.marcos);
     setRelatoFatos(EXEMPLO_JOAO.relatoFatos);
     setDocumentChecklist(EXEMPLO_JOAO.documentChecklist);
   };
@@ -124,8 +119,12 @@ export function ViabilidadeAnalyzer() {
     setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const toggleChecklist = (key: keyof typeof documentChecklist) => {
+  const toggleChecklist = (key: string) => {
     setDocumentChecklist({ ...documentChecklist, [key]: !documentChecklist[key] });
+  };
+
+  const setMarco = (key: string, value: string) => {
+    setMarcos({ ...marcos, [key]: value });
   };
 
   const handleRunAnalysis = async () => {
@@ -133,25 +132,14 @@ export function ViabilidadeAnalyzer() {
     setNotaTecnicaResult('');
 
     const docsSummary = buildDocumentsPrompt(uploadedFiles);
-    const checklistSummary = Object.entries(documentChecklist)
-      .map(([k, v]) => `- ${k}: ${v ? 'DISPONÍVEL' : 'AUSENTE'}`)
-      .join('\n');
-
-    const prompt = `REALIZAR ANÁLISE PRÉVIA DE VIABILIDADE MÉDICO-LEGAL:
-Ramo do Direito: ${caseType.toUpperCase()}
-Profissão do Periciando: ${profissao}
-Data do Evento/Sinistro: ${dataSinistro}
-
-RELATO DOS FATOS:
-${relatoFatos}
-
-DOCUMENTOS ACOSTADOS E EXAMES ENVIADOS:
-${docsSummary}
-
-CHECKLIST DE DOCUMENTAÇÃO:
-${checklistSummary}
-
-Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX), emita a Nota Técnica de Viabilidade completa para o advogado, apontando diagnóstico, plausibilidade do nexo (Simonin), riscos da defesa adversa, enquadramento de dano e veredito final com score de viabilidade (0 a 100%).`;
+    const prompt = buildViabilidadePrompt({
+      ramoId: caseType,
+      profissao,
+      relato: relatoFatos,
+      marcos,
+      checklist: documentChecklist,
+      docsSummary,
+    });
 
     try {
       const response = await callAI(prompt, SYSTEM_PROMPTS.analiseViabilidade, false);
@@ -159,11 +147,8 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
       setAnalisado(true);
 
       // Calcula score estimado com base na presença documental
-      let score = 50;
-      if (documentChecklist.prontuarioUrgencia) score += 15;
-      if (documentChecklist.laudoImagem) score += 15;
-      if (documentChecklist.relatorioCirurgico) score += 10;
-      if (documentChecklist.carteiraTrabalho) score += 10;
+      const soma = ramo.checklist.reduce((acc, c) => acc + (documentChecklist[c.key] ? c.peso : 0), 0);
+      const score = 50 + soma;
       setViabilityScore(Math.min(score, 95));
       setViabilityStatus(score >= 75 ? 'alta' : score >= 50 ? 'media' : 'baixa');
     } catch (err: any) {
@@ -245,34 +230,66 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                <label htmlFor="viab-ramo" className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
                   Ramo da Lide
                 </label>
                 <select
+                  id="viab-ramo"
                   value={caseType}
-                  onChange={(e) => setCaseType(e.target.value)}
+                  onChange={(e) => setCaseType(e.target.value as RamoId)}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-100 font-sans"
                 >
-                  <option value="securitario">Securitário / DPVAT</option>
-                  <option value="trabalhista">Trabalhista / Ocupacional</option>
-                  <option value="erro_medico">Erro Médico / Civil</option>
-                  <option value="previdenciario">Previdenciário (INSS)</option>
+                  {RAMO_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {RAMOS[id].label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Data do Sinistro / Início
-                </label>
-                <input
-                  type="text"
-                  value={dataSinistro}
-                  onChange={(e) => setDataSinistro(e.target.value)}
-                  placeholder="dd/mm/aaaa (em branco = deduzir)"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-100 font-mono"
-                />
-              </div>
+              {ramo.campos.map((c) => (
+                <div key={c.key}>
+                  <label
+                    htmlFor={`viab-campo-${c.key}`}
+                    className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1"
+                  >
+                    {c.label}
+                  </label>
+                  {c.tipo === 'select' ? (
+                    <select
+                      id={`viab-campo-${c.key}`}
+                      value={marcos[c.key] ?? ''}
+                      onChange={(e) => setMarco(c.key, e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-100 font-sans"
+                    >
+                      <option value="">Selecione…</option>
+                      {c.opcoes?.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`viab-campo-${c.key}`}
+                      type="text"
+                      value={marcos[c.key] ?? ''}
+                      onChange={(e) => setMarco(c.key, e.target.value)}
+                      placeholder={c.tipo === 'data' ? 'dd/mm/aaaa (em branco = deduzir)' : 'Em branco = deduzir'}
+                      className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-100 ${
+                        c.tipo === 'data' ? 'font-mono' : 'font-sans'
+                      }`}
+                    />
+                  )}
+                  {c.ajuda && <p className="text-[10px] text-slate-500 mt-0.5">{c.ajuda}</p>}
+                </div>
+              ))}
             </div>
+            {ramo.usaSusep === 'opcional' && (
+              <p className="text-[10px] text-slate-500">
+                Tabela SUSEP opcional neste ramo: valora dano, não valora incapacidade laboral.
+              </p>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
@@ -372,26 +389,19 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                 Checklist Probatório (IFHFLIX):
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                {[
-                  { key: 'prontuarioUrgencia', label: 'Prontuário de PS imediato' },
-                  { key: 'laudoImagem', label: 'Laudo de Imagem (RX/RNM)' },
-                  { key: 'relatorioCirurgico', label: 'Ficha / Relatório Cirúrgico' },
-                  { key: 'boletimOcorrencia', label: 'Boletim de Ocorrência (BO)' },
-                  { key: 'carteiraTrabalho', label: 'CTPS / Descrição da Função' },
-                  { key: 'laudoINSS', label: 'Laudo SABI do INSS' },
-                ].map((item) => (
+                {ramo.checklist.map((item) => (
                   <button
                     key={item.key}
                     type="button"
-                    onClick={() => toggleChecklist(item.key as any)}
+                    onClick={() => toggleChecklist(item.key)}
                     className={`p-2 rounded-lg border text-left flex items-center gap-2 transition-all ${
-                      (documentChecklist as any)[item.key]
+                      documentChecklist[item.key]
                         ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-400 text-emerald-900 dark:text-emerald-200'
                         : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-700 text-slate-500'
                     }`}
                   >
                     <span className="font-bold">
-                      {(documentChecklist as any)[item.key] ? '✓' : '○'}
+                      {documentChecklist[item.key] ? '✓' : '○'}
                     </span>
                     <span className="text-[11px] font-medium">{item.label}</span>
                   </button>
@@ -463,12 +473,14 @@ Com base nestes elementos e nas diretrizes do Instituto Felipe Hurtado (IFHFLIX)
                 Compatível (Simonin) (exemplo)
               </div>
             </div>
+            {ramo.usaSusep !== 'nao' && (
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
               <span className="text-[11px] text-slate-400 font-semibold uppercase">Estimativa SUSEP</span>
               <div className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-0.5">
                 12,5% (Médio) (exemplo)
               </div>
             </div>
+            )}
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
               <span className="text-[11px] text-slate-400 font-semibold uppercase">Recomendação</span>
               <div className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-0.5">
