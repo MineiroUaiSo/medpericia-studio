@@ -18,6 +18,7 @@ export interface ExtractedDocument {
   charCount: number;
   warning?: string;
   ocr?: boolean;
+  progress?: number;
   ocrConfidence?: number;
 }
 
@@ -92,6 +93,7 @@ async function extractPdf(file: File, onProgress?: OcrProgress): Promise<Extract
   const data = new Uint8Array(await file.arrayBuffer());
   const pdf = await getDocument({ data }).promise;
   const pages: string[] = [];
+  onProgress?.(`Verificando texto do PDF (${pdf.numPages} págs.)…`);
 
   for (let i = 1; i <= pdf.numPages; i += 1) {
     const page = await pdf.getPage(i);

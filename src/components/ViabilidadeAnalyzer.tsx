@@ -110,8 +110,10 @@ export function ViabilidadeAnalyzer() {
 
     const extracted = await Promise.all(
       selected.map((file, i) =>
-        extractDocument(file, (msg) =>
-          setUploadedFiles((prev) => prev.map((d) => (d.id === placeholders[i].id ? { ...d, warning: msg } : d))),
+        extractDocument(file, (msg, pct) =>
+          setUploadedFiles((prev) =>
+            prev.map((d) => (d.id === placeholders[i].id ? { ...d, warning: msg, progress: pct ?? d.progress } : d)),
+          ),
         ),
       ),
     );
@@ -374,6 +376,18 @@ export function ViabilidadeAnalyzer() {
                       {f.status === 'extracted' ? ` • ${f.charCount} chars → .md` : ''}
                       {f.status === 'extracting' ? ' • extraindo texto…' : ''}
                     </div>
+                    {f.status === 'extracting' && typeof f.progress === 'number' && (
+                      <div
+                        role="progressbar"
+                        aria-valuenow={f.progress}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`Leitura OCR de ${f.name}`}
+                        className="h-1.5 w-full rounded bg-slate-200 dark:bg-slate-700 overflow-hidden"
+                      >
+                        <div className="h-full bg-blue-500 transition-all" style={{ width: `${f.progress}%` }} />
+                      </div>
+                    )}
                     <div className="text-[11px] text-slate-600 dark:text-slate-400 italic line-clamp-2">
                       {f.warning || (f.markdown ? `"${f.markdown.slice(0, 160)}"` : '')}
                     </div>
