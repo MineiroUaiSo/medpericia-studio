@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FileText,
   Calculator,
@@ -53,6 +53,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('laudo');
   const [copiedAllHeader, setCopiedAllHeader] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+
+  useEffect(() => {
+    document.querySelector('nav[aria-label="Abas da Aplicação"] [aria-current="page"]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeTab]);
 
   const handleCopyAllHeader = () => {
     const full = `${JOAO_DISCUSSAO_TEXT}\n\n========================================\n\n${JOAO_CONCLUSAO_TEXT}`;
@@ -115,6 +120,7 @@ export default function App() {
               <Sparkles className="w-3.5 h-3.5" />
               <span>Assistente IA</span>
             </button>
+            {activeTab === 'laudo' && (
             <button
               type="button"
               onClick={handleCopyAllHeader}
@@ -124,6 +130,7 @@ export default function App() {
               {copiedAllHeader ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               <span className="hidden sm:inline">{copiedAllHeader ? 'Copiado!' : 'Copiar Laudo'}</span>
             </button>
+            )}
             <button
               type="button"
               onClick={handlePrint}
@@ -146,6 +153,7 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as ActiveTab)}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-sm'
