@@ -1,3 +1,5 @@
+import { MIN_OCR_CONFIDENCE, ocrImage, ocrPdf, type OcrProgress, type OcrResult } from './ocr';
+
 export type ExtractionStatus =
   | 'extracting'
   | 'extracted'
@@ -15,6 +17,8 @@ export interface ExtractedDocument {
   pageCount?: number;
   charCount: number;
   warning?: string;
+  ocr?: boolean;
+  ocrConfidence?: number;
 }
 
 const MAX_CHARS_PER_FILE = 12_000;
@@ -30,6 +34,33 @@ function truncateMarkdown(text: string, max = MAX_CHARS_PER_FILE): string {
   const trimmed = text.replace(/\u0000/g, '').trim();
   if (trimmed.length <= max) return trimmed;
   return `${trimmed.slice(0, max)}\n\n…[texto truncado para economizar tokens — ${trimmed.length} caracteres originais]`;
+}
+
+
+type Extracted = Pick<ExtractedDocument, 'markdown' | 'pageCount' | 'status' | 'warning' | 'ocr' | 'ocrConfidence'>;
+
+/** Converte o resultado do OCR em documento: baixa confiança (ex.: manuscrito) exige transcrição. */
+function fromOcr(r: OcrResult): Extracted {
+  const conf = Math.round(r.confidence);
+  if (!r.text || r.confidence < MIN_OCR_CONFIDENCE) {
+    return {
+      markdown: '',
+      pageCount: r.pagesTotal,
+      status: 'needs_transcription',
+      ocr: true,
+      ocrConfidence: conf,
+      warning: `OCR sem confiança suficiente (${conf}%) — provável manuscrito ou imagem ruim. Transcreva o conteúdo.`,
+    };
+  }
+  const parcial = r.pagesDone < r.pagesTotal ? ` Lidas só as ${r.pagesDone} primeiras de ${r.pagesTotal} páginas.` : '';
+  return {
+    markdown: truncateMarkdown(`[TEXTO OBTIDO POR OCR, confiança ${conf}% — pode conter erros; confirmar no original]\n\n${r.text}`),
+    pageCount: r.pagesTotal,
+    status: 'extracted',
+    ocr: true,
+    ocrConfidence: conf,
+    warning: `Lido por OCR (confiança ${conf}%).${parcial} Revise antes de usar.`,
+  };
 }
 
 function fileKind(file: File): 'pdf' | 'docx' | 'text' | 'image' | 'other' {
@@ -51,7 +82,7 @@ function fileKind(file: File): 'pdf' | 'docx' | 'text' | 'image' | 'other' {
   return 'other';
 }
 
-async function extractPdf(file: File): Promise<Pick<ExtractedDocument, 'markdown' | 'pageCount' | 'status' | 'warning'>> {
+async function extractPdf(file: File, onProgress?: OcrProgress): Promise<Extracted> {
   const [{ GlobalWorkerOptions, getDocument }, workerUrl] = await Promise.all([
     import('pdfjs-dist'),
     import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
@@ -77,13 +108,7 @@ async function extractPdf(file: File): Promise<Pick<ExtractedDocument, 'markdown
   const charsPerPage = pdf.numPages > 0 ? markdown.length / pdf.numPages : 0;
 
   if (!markdown || charsPerPage < MIN_CHARS_PER_PDF_PAGE) {
-    return {
-      markdown: markdown || '',
-      pageCount: pdf.numPages,
-      status: 'needs_transcription',
-      warning:
-        'PDF digitalizado ou com pouco texto selecionável. Extração automática falhou. Transcreva o conteúdo (ou use OCR) antes de analisar.',
-    };
+    return fromOcr(await ocrPdf(pdf, onProgress));
   }
 
   return {
@@ -108,7 +133,7 @@ async function extractDocx(file: File): Promise<Pick<ExtractedDocument, 'markdow
   return { markdown, status: 'extracted' };
 }
 
-export async function extractDocument(file: File): Promise<ExtractedDocument> {
+export async function extractDocument(file: File, onProgress?: OcrProgress): Promise<ExtractedDocument> {
   const id = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const base: ExtractedDocument = {
     id,
@@ -123,15 +148,13 @@ export async function extractDocument(file: File): Promise<ExtractedDocument> {
   try {
     const kind = fileKind(file);
 
-    if (kind === 'image' || kind === 'other') {
-      return {
-        ...base,
-        status: kind === 'image' ? 'needs_transcription' : 'unsupported',
-        warning:
-          kind === 'image'
-            ? 'Imagem (scan/foto/manuscrito). Sem OCR neste módulo. Transcreva o texto e cole no relato ou envie um PDF/DOCX com texto.'
-            : `Formato não suportado (${file.name}). Envie PDF, DOCX, TXT ou MD.`,
-      };
+    if (kind === 'other') {
+      return { ...base, status: 'unsupported', warning: `Formato não suportado (${file.name}). Envie PDF, DOCX, TXT, MD ou imagem.` };
+    }
+
+    if (kind === 'image') {
+      const extracted = fromOcr(await ocrImage(file, onProgress));
+      return { ...base, ...extracted, charCount: extracted.markdown.length };
     }
 
     if (kind === 'text') {
@@ -142,7 +165,7 @@ export async function extractDocument(file: File): Promise<ExtractedDocument> {
       return { ...base, status: 'extracted', markdown: text, charCount: text.length };
     }
 
-    const extracted = kind === 'pdf' ? await extractPdf(file) : await extractDocx(file);
+    const extracted = kind === 'pdf' ? await extractPdf(file, onProgress) : await extractDocx(file);
     return {
       ...base,
       ...extracted,
@@ -178,7 +201,7 @@ export function buildDocumentsPrompt(docs: ExtractedDocument[]): string {
 
   return [
     extracted.length
-      ? `DOCUMENTOS EXTRAÍDOS PARA MARKDOWN (texto selecionável):\n\n${extractedBlock}`
+      ? `DOCUMENTOS EXTRAÍDOS PARA MARKDOWN (texto selecionável ou OCR; trechos marcados "OCR" podem conter erros de leitura — não os trate como certos, cite com cautela):\n\n${extractedBlock}`
       : 'Nenhum documento com texto extraível.',
     blocked.length
       ? `\n\nDOCUMENTOS NÃO EXTRAÍDOS (exigem transcrição manual / OCR):\n${blockedBlock}`

@@ -108,7 +108,13 @@ export function ViabilidadeAnalyzer() {
     }));
     setUploadedFiles((prev) => [...prev, ...placeholders]);
 
-    const extracted = await Promise.all(selected.map((file) => extractDocument(file)));
+    const extracted = await Promise.all(
+      selected.map((file, i) =>
+        extractDocument(file, (msg) =>
+          setUploadedFiles((prev) => prev.map((d) => (d.id === placeholders[i].id ? { ...d, warning: msg } : d))),
+        ),
+      ),
+    );
     setUploadedFiles((prev) => {
       const withoutPlaceholders = prev.filter((doc) => !placeholders.some((p) => p.id === doc.id));
       return [...withoutPlaceholders, ...extracted];
@@ -344,7 +350,7 @@ export function ViabilidadeAnalyzer() {
             <div className="space-y-2">
               {uploadedFiles.length === 0 && (
                 <p className="text-[11px] text-slate-500 italic">
-                  Anexe PDF, DOCX, TXT ou MD. Extração local no browser (sem enviar arquivo bruto à IA). Scan/manuscrito/foto: avisa transcrição.
+                  Anexe PDF, DOCX, TXT ou MD. Extração local no browser (sem enviar arquivo bruto à IA). Scan/foto: OCR local grátis (até 25 páginas por arquivo, o arquivo não sai do navegador). Manuscrito ou OCR de baixa confiança: pede transcrição.
                 </p>
               )}
               {uploadedFiles.map((f) => (
