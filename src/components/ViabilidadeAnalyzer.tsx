@@ -160,7 +160,7 @@ export function ViabilidadeAnalyzer() {
       setViabilityScore(Math.min(score, 95));
       setViabilityStatus(score >= 75 ? 'alta' : score >= 50 ? 'media' : 'baixa');
     } catch (err: any) {
-      setNotaTecnicaResult(`Erro na análise automatizada: ${err.message}. Verifique a conexão com a IA.`);
+      setNotaTecnicaResult(`Erro na análise automatizada: ${err.message}${/Chave da IA/.test(err.message) ? '.' : '. Verifique a conexão com a IA.'}`);
     } finally {
       setIsLoading(false);
     }

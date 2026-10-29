@@ -78,7 +78,16 @@ export async function callAI(
   const settings = getStoredAISettings();
   const modelToUse = isDeep ? settings.modelDeep : settings.model;
 
-  if (settings.provider === 'openrouter') {
+  if (!settings.apiKey.trim()) {
+    throw new Error(
+      'Chave da IA não configurada. Clique em "Assistente IA" (canto superior direito) → aba de configurações, cole sua chave do OpenRouter (sk-or-…) ou do Google Gemini (AIza…, gratuita em aistudio.google.com/apikey; é reconhecida automaticamente). Ela fica salva só no seu navegador',
+    );
+  }
+
+  // Chave do Google (AIza…) usa a API Gemini direta, sem precisar de OpenRouter
+  const isGoogleKey = settings.apiKey.trim().startsWith('AIza');
+
+  if (settings.provider === 'openrouter' && !isGoogleKey) {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
