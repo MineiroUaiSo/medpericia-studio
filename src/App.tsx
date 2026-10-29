@@ -16,6 +16,7 @@ import {
   Stethoscope,
   Sparkles,
   FileCheck,
+  ListChecks,
 } from 'lucide-react';
 import { JoaoCaseViewer } from './components/JoaoCaseViewer';
 import { SusepCalculator } from './components/SusepCalculator';
@@ -27,6 +28,7 @@ import { QuesitosBank } from './components/QuesitosBank';
 import { ParecerGenerator } from './components/ParecerGenerator';
 import { CaptacaoScripts } from './components/CaptacaoScripts';
 import { AIAssistantModal } from './components/AIAssistantModal';
+import { ChecklistsIFH } from './components/ChecklistsIFH';
 import { ViabilidadeAnalyzer } from './components/ViabilidadeAnalyzer';
 import { JOAO_DISCUSSAO_TEXT, JOAO_CONCLUSAO_TEXT } from './data/joaoCase';
 
@@ -40,6 +42,7 @@ type ActiveTab =
   | 'parecer'
   | 'waddell'
   | 'captacao'
+  | 'checklists'
   | 'legislacao';
 
 export default function App() {
@@ -68,6 +71,7 @@ export default function App() {
     { id: 'parecer', label: 'Parecer do Assistente', icon: Layers, badge: 'Impugnação', group: 'assistencia' },
     { id: 'waddell', label: 'Validação & Waddell', icon: Eye, badge: 'Simulação', group: 'pericia' },
     { id: 'captacao', label: 'Captação & Tribunais', icon: Briefcase, badge: 'B2B', group: 'negocio' },
+    { id: 'checklists', label: 'Checklists IFH', icon: ListChecks, badge: '3', group: 'negocio' },
     { id: 'legislacao', label: 'Normas & Decisões STF', icon: BookOpen, badge: null, group: 'legislacao' },
   ];
 
@@ -173,6 +177,7 @@ export default function App() {
         {activeTab === 'parecer' && <ParecerGenerator />}
         {activeTab === 'waddell' && <WaddellValidator />}
         {activeTab === 'captacao' && <CaptacaoScripts />}
+        {activeTab === 'checklists' && <ChecklistsIFH />}
         {activeTab === 'legislacao' && <LegalGuide />}
       </main>
 
