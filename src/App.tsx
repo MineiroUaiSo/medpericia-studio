@@ -15,6 +15,7 @@ import {
   Layers,
   Stethoscope,
   Sparkles,
+  FileCheck,
 } from 'lucide-react';
 import { JoaoCaseViewer } from './components/JoaoCaseViewer';
 import { SusepCalculator } from './components/SusepCalculator';
@@ -26,10 +27,12 @@ import { QuesitosBank } from './components/QuesitosBank';
 import { ParecerGenerator } from './components/ParecerGenerator';
 import { CaptacaoScripts } from './components/CaptacaoScripts';
 import { AIAssistantModal } from './components/AIAssistantModal';
+import { ViabilidadeAnalyzer } from './components/ViabilidadeAnalyzer';
 import { JOAO_DISCUSSAO_TEXT, JOAO_CONCLUSAO_TEXT } from './data/joaoCase';
 
 type ActiveTab =
   | 'laudo'
+  | 'viabilidade'
   | 'susep'
   | 'simonin'
   | 'honorarios'
@@ -57,6 +60,7 @@ export default function App() {
 
   const navItems = [
     { id: 'laudo', label: 'Laudo: João da Silva', icon: FileText, badge: 'Caso Ativo', group: 'pericia' },
+    { id: 'viabilidade', label: 'Análise de Viabilidade', icon: FileCheck, badge: 'Documentos & IA', group: 'assistencia' },
     { id: 'susep', label: 'Tabela SUSEP & Balthazar', icon: Calculator, badge: '12,5%', group: 'pericia' },
     { id: 'simonin', label: 'Nexo Causal (Simonin)', icon: ShieldCheck, badge: '6/6 Pleno', group: 'pericia' },
     { id: 'honorarios', label: 'Proposta de Honorários', icon: Coins, badge: 'CPC 465', group: 'negocio' },
@@ -161,6 +165,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'laudo' && <JoaoCaseViewer />}
+        {activeTab === 'viabilidade' && <ViabilidadeAnalyzer />}
         {activeTab === 'susep' && <SusepCalculator />}
         {activeTab === 'simonin' && <SimoninMatrix />}
         {activeTab === 'honorarios' && <HonorariosCalculator />}
