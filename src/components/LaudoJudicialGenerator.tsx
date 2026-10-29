@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Check, Copy, Loader2, Sparkles } from 'lucide-react';
 import { buildLaudoSkeleton, EMPTY_LAUDO, ESFERAS, type Esfera, type LaudoData } from '../utils/laudoBuilder';
+import { caseKey, useCaseId } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { callAI, SYSTEM_PROMPTS } from '../services/aiService';
 
 const FIELDS: { key: keyof LaudoData; label: string }[] = [
@@ -20,9 +22,10 @@ const FIELDS: { key: keyof LaudoData; label: string }[] = [
 const inputCls = 'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm';
 
 export function LaudoJudicialGenerator() {
-  const [data, setData] = useState<LaudoData>(EMPTY_LAUDO);
-  const [notas, setNotas] = useState('');
-  const [ia, setIa] = useState('');
+  const caseId = useCaseId();
+  const [data, setData] = usePersistedState<LaudoData>(caseKey(caseId, 'laudogen'), EMPTY_LAUDO);
+  const [notas, setNotas] = usePersistedState(caseKey(caseId, 'laudogen-notas'), '');
+  const [ia, setIa] = usePersistedState(caseKey(caseId, 'laudogen-ia'), '');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [copied, setCopied] = useState(false);

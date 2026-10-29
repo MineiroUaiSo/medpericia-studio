@@ -28,6 +28,9 @@ import { QuesitosBank } from './components/QuesitosBank';
 import { ParecerGenerator } from './components/ParecerGenerator';
 import { CaptacaoScripts } from './components/CaptacaoScripts';
 import { AIAssistantModal } from './components/AIAssistantModal';
+import { CaseBar, type CaseInfo } from './components/CaseBar';
+import { CaseProvider, clearCaseData, TEST_CASE_ID } from './context/CaseContext';
+import { usePersistedState } from './hooks/usePersistedState';
 import { LaudoJudicialGenerator } from './components/LaudoJudicialGenerator';
 import { EmailVaras } from './components/EmailVaras';
 import { ChecklistsIFH } from './components/ChecklistsIFH';
@@ -53,6 +56,26 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('laudo');
   const [copiedAllHeader, setCopiedAllHeader] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [cases, setCases] = usePersistedState<CaseInfo[]>('medpericia:cases', [
+    { id: TEST_CASE_ID, name: 'Caso de teste (João da Silva)' },
+  ]);
+  const [caseId, setCaseId] = usePersistedState('medpericia:active-case', TEST_CASE_ID);
+  const [resetN, setResetN] = useState(0);
+  const isTest = caseId === TEST_CASE_ID;
+  const caseName = cases.find((c) => c.id === caseId)?.name ?? '';
+
+  const createCase = (name: string) => {
+    const id = `c${Date.now().toString(36)}`;
+    setCases([...cases, { id, name }]);
+    setCaseId(id);
+    setActiveTab('laudogen');
+  };
+  const clearCase = () => { clearCaseData(caseId); setResetN((n) => n + 1); };
+  const deleteCase = () => {
+    clearCaseData(caseId);
+    setCases(cases.filter((c) => c.id !== caseId));
+    setCaseId(TEST_CASE_ID);
+  };
 
   useEffect(() => {
     document.querySelector('nav[aria-label="Abas da Aplicação"] [aria-current="page"]')
@@ -71,7 +94,7 @@ export default function App() {
   };
 
   const navItems = [
-    { id: 'laudo', label: 'Laudo: João da Silva', icon: FileText, badge: 'Caso Ativo', group: 'pericia' },
+    { id: 'laudo', label: isTest ? 'Laudo: João da Silva' : 'Laudo do caso', icon: FileText, badge: isTest ? 'Teste' : 'Caso Ativo', group: 'pericia' },
     { id: 'viabilidade', label: 'Análise de Viabilidade', icon: FileCheck, badge: 'Documentos & IA', group: 'assistencia' },
     { id: 'susep', label: 'Tabela SUSEP & Balthazar', icon: Calculator, badge: '12,5%', group: 'pericia' },
     { id: 'simonin', label: 'Nexo Causal (Simonin)', icon: ShieldCheck, badge: '6/6 Pleno', group: 'pericia' },
@@ -120,7 +143,7 @@ export default function App() {
               <Sparkles className="w-3.5 h-3.5" />
               <span>Assistente IA</span>
             </button>
-            {activeTab === 'laudo' && (
+            {activeTab === 'laudo' && isTest && (
             <button
               type="button"
               onClick={handleCopyAllHeader}
@@ -181,20 +204,43 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
+      <CaseBar
+        cases={cases}
+        activeId={caseId}
+        isTest={isTest}
+        onSelect={setCaseId}
+        onCreate={createCase}
+        onClear={clearCase}
+        onDelete={deleteCase}
+      />
+
+      {/* Main Content Area — abas ficam montadas (ocultas) para não perder o que foi preenchido */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'laudo' && <JoaoCaseViewer />}
-        {activeTab === 'viabilidade' && <ViabilidadeAnalyzer />}
-        {activeTab === 'susep' && <SusepCalculator />}
-        {activeTab === 'simonin' && <SimoninMatrix />}
-        {activeTab === 'honorarios' && <HonorariosCalculator />}
-        {activeTab === 'quesitos' && <QuesitosBank />}
-        {activeTab === 'parecer' && <ParecerGenerator />}
-        {activeTab === 'waddell' && <WaddellValidator />}
-        {activeTab === 'captacao' && <CaptacaoScripts />}
-        {activeTab === 'laudogen' && <LaudoJudicialGenerator />}
-        {activeTab === 'emailvaras' && <EmailVaras />}
-        {activeTab === 'checklists' && <ChecklistsIFH />}
-        {activeTab === 'legislacao' && <LegalGuide />}
+        <CaseProvider id={caseId} key={`${caseId}-${resetN}`}>
+          {([
+            ['laudo', isTest ? <JoaoCaseViewer /> : (
+              <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center text-sm">
+                <p className="font-bold">{caseName}</p>
+                <p className="mt-1 opacity-70">Caso novo, sem laudo. Use o <strong>Gerador de Laudo</strong> para montar o laudo deste caso.</p>
+                <button onClick={() => setActiveTab('laudogen')} className="mt-3 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold">Abrir Gerador de Laudo</button>
+              </div>
+            )],
+            ['viabilidade', <ViabilidadeAnalyzer />],
+            ['susep', <SusepCalculator />],
+            ['simonin', <SimoninMatrix />],
+            ['honorarios', <HonorariosCalculator />],
+            ['quesitos', <QuesitosBank />],
+            ['parecer', <ParecerGenerator />],
+            ['waddell', <WaddellValidator />],
+            ['captacao', <CaptacaoScripts />],
+            ['laudogen', <LaudoJudicialGenerator />],
+            ['emailvaras', <EmailVaras />],
+            ['checklists', <ChecklistsIFH />],
+            ['legislacao', <LegalGuide />],
+          ] as [ActiveTab, React.ReactNode][]).map(([id, node]) => (
+            <div key={id} hidden={activeTab !== id}>{node}</div>
+          ))}
+        </CaseProvider>
       </main>
 
       {/* Footer */}

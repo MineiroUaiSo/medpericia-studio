@@ -1,50 +1,44 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { CheckSquare, RotateCcw, Square } from 'lucide-react';
 import { CHECKLISTS_IFH } from '../data/checklistsIFH';
+import { caseKey, useCaseId } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 
-const STORAGE_KEY = 'medpericia_checklists';
 type Progress = Record<string, string[]>;
 
-function loadProgress(): Progress {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
+// Cadastro em tribunais é do perito (vale para todos os casos); as demais listas são por caso.
+const GLOBAL_LISTS = ['cadastro'];
 
 export function ChecklistsIFH() {
+  const caseId = useCaseId();
   const [activeId, setActiveId] = useState(CHECKLISTS_IFH[0].id);
-  const [progress, setProgress] = useState<Progress>(loadProgress);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-    } catch {
-      // armazenamento indisponível: segue só em memória
-    }
-  }, [progress]);
+  const [caseProg, setCaseProg] = usePersistedState<Progress>(caseKey(caseId, 'checklists'), {});
+  const [globalProg, setGlobalProg] = usePersistedState<Progress>(caseKey('global', 'checklists'), {});
+  const progressOf = (id: string) => (GLOBAL_LISTS.includes(id) ? globalProg : caseProg);
+  const setProgressOf = (id: string, items: string[]) =>
+    GLOBAL_LISTS.includes(id)
+      ? setGlobalProg({ ...globalProg, [id]: items })
+      : setCaseProg({ ...caseProg, [id]: items });
 
   const list = CHECKLISTS_IFH.find((c) => c.id === activeId) ?? CHECKLISTS_IFH[0];
-  const done = new Set(progress[list.id] ?? []);
+  const done = new Set(progressOf(list.id)[list.id] ?? []);
   const total = list.groups.reduce((n, g) => n + g.items.length, 0);
 
   const toggle = (item: string) => {
     const next = new Set(done);
     if (next.has(item)) next.delete(item);
     else next.add(item);
-    setProgress({ ...progress, [list.id]: [...next] });
+    setProgressOf(list.id, [...next]);
   };
 
-  const reset = () => setProgress({ ...progress, [list.id]: [] });
+  const reset = () => setProgressOf(list.id, []);
   const pct = total ? Math.round((done.size / total) * 100) : 0;
 
   return (
     <section aria-labelledby="checklists-heading" className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {CHECKLISTS_IFH.map((c) => {
-          const d = progress[c.id]?.length ?? 0;
+          const d = progressOf(c.id)[c.id]?.length ?? 0;
           const active = c.id === list.id;
           return (
             <button

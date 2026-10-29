@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
+import { caseKey } from '../context/CaseContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { buildAssunto, buildEmail, DICAS_ENVIO, EMPTY_EMAIL, type Destinatario, type EmailData } from '../utils/emailVaras';
 
 const FIELDS: { key: keyof EmailData; label: string }[] = [
@@ -12,7 +14,8 @@ const FIELDS: { key: keyof EmailData; label: string }[] = [
 const inputCls = 'w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm';
 
 export function EmailVaras() {
-  const [d, setD] = useState<EmailData>(EMPTY_EMAIL);
+  // ferramenta do perito (não do caso): dados valem para todos os casos
+  const [d, setD] = usePersistedState<EmailData>(caseKey('global', 'email'), EMPTY_EMAIL);
   const [copied, setCopied] = useState('');
   const set = <K extends keyof EmailData>(k: K, v: EmailData[K]) => setD((x) => ({ ...x, [k]: v }));
   const assunto = useMemo(() => buildAssunto(d), [d]);
